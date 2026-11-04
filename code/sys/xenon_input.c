@@ -42,6 +42,11 @@ static float xi_cursor_accum_x;
 static float xi_cursor_accum_y;
 static int xi_prev_in_menu;
 
+static cvar_t *x360_rumbleEnable = NULL;
+static cvar_t *x360_rumbleScale  = NULL;
+static int     s_rumbleExpiryMs = 0;
+static int     s_rumbleActive   = 0;
+
 static void XI_SetDefaultBind(int keynum, const char *binding)
 {
 	char *existing = Key_GetBinding(keynum);
@@ -94,6 +99,8 @@ static void XI_ResetState(void)
 	xi_cursor_accum_x = 0.0f;
 	xi_cursor_accum_y = 0.0f;
 	xi_prev_in_menu = 0;
+	s_rumbleActive = 0;
+	s_rumbleExpiryMs = 0;
 }
 
 static void XI_ToggleConsole(void)
@@ -157,6 +164,61 @@ static float XI_ClampUnit(float f)
 	return f;
 }
 
+static void XI_RumbleStop(void)
+{
+	INPUT_VIBRATION vib;
+
+	if (s_rumbleActive && xi_active_port >= 0) {
+		memset(&vib, 0, sizeof(vib));
+		XamInputSetState(xi_active_port, 0, &vib);
+	}
+	s_rumbleActive = 0;
+	s_rumbleExpiryMs = 0;
+}
+
+static void XI_RumbleTick(void)
+{
+	if (!s_rumbleActive)
+		return;
+	if (Sys_Milliseconds() < s_rumbleExpiryMs)
+		return;
+	XI_RumbleStop();
+}
+
+void XI_SetRumble(int large, int small, int durationMs)
+{
+	INPUT_VIBRATION vib;
+	float scale;
+	int lg, sm, expiry;
+
+	if (!x360_rumbleEnable || !x360_rumbleEnable->integer || xi_active_port < 0)
+		return;
+
+	scale = x360_rumbleScale ? x360_rumbleScale->value : 1.0f;
+	if (scale < 0.0f)
+		scale = 0.0f;
+	if (scale > 1.0f)
+		scale = 1.0f;
+
+	/* Unlike the PS3 small motor (on/off), the 360 one is analog, so its value is passed through. */
+	lg = (int)(large * scale);
+	sm = (int)(small * scale);
+	if (lg > 255)
+		lg = 255;
+	if (sm > 255)
+		sm = 255;
+
+	memset(&vib, 0, sizeof(vib));
+	vib.left_motor_speed  = (uint16_t)(lg * 257);
+	vib.right_motor_speed = (uint16_t)(sm * 257);
+	XamInputSetState(xi_active_port, 0, &vib);
+
+	expiry = Sys_Milliseconds() + durationMs;
+	if (expiry > s_rumbleExpiryMs)
+		s_rumbleExpiryMs = expiry;
+	s_rumbleActive = 1;
+}
+
 void IN_Init(void *windowData)
 {
 	char *ctrl;
@@ -192,6 +254,9 @@ void IN_Init(void *windowData)
 	Cvar_Set("j_forward", "-0.25");
 	Cvar_Set("j_side", "0.25");
 
+	x360_rumbleEnable = Cvar_Get("x360_rumbleEnable", "1", CVAR_ARCHIVE);
+	x360_rumbleScale  = Cvar_Get("x360_rumbleScale", "1.0", CVAR_ARCHIVE);
+
 	Com_Printf("IN_Init: XInput pad input ready\n");
 }
 
@@ -201,7 +266,7 @@ void IN_Frame(void)
 	int ok[XI_PORT_COUNT];
 	int cur[PB_COUNT];
 	int swallow[PB_COUNT];
-	int i, cand, key, catchers, in_menu, in_text, dx, dy;
+	int i, b, cand, key, catchers, in_menu, in_text, dx, dy;
 	const INPUT_GAMEPAD *pad;
 	int lx, ly, rx, ry;
 	float fx, fy;
@@ -225,11 +290,13 @@ void IN_Frame(void)
 		}
 	}
 	if (cand != xi_active_port) {
+		XI_RumbleStop();
 		XI_ReleaseHeld();
 		xi_active_port = cand;
 	}
 	if (cand < 0)
 		return;
+	XI_RumbleTick();
 
 	pad = &states[cand].gamepad;
 	XI_ReadButtons(pad, cur);
@@ -256,6 +323,25 @@ void IN_Frame(void)
 	if (cur[PB_B] && !xi_btn_prev[PB_B] && (catchers & KEYCATCH_CONSOLE)) {
 		XI_ToggleConsole();
 		swallow[PB_B] = 1;
+	}
+
+	/* LS+RS (edge-detected): toggle rumble enable; both presses are swallowed so +speed/+scores stay quiet. */
+	if (cur[PB_LS] && cur[PB_RS] && (!xi_btn_prev[PB_LS] || !xi_btn_prev[PB_RS])) {
+		int on = x360_rumbleEnable ? !x360_rumbleEnable->integer : 1;
+
+		Cvar_SetValue("x360_rumbleEnable", on ? 1.0f : 0.0f);
+		Com_Printf("Rumble: %s\n", on ? "ON" : "OFF");
+		if (on)
+			XI_SetRumble(200, 1, 200);
+		else
+			XI_RumbleStop();
+		/* Release whichever stick button was pressed first and already sent its key. */
+		for (b = PB_LS; b <= PB_RS; b++) {
+			if (xi_btn_sent[b])
+				Com_QueueEvent(0, SE_KEY, xi_btn_sent[b], qfalse, 0, NULL);
+			xi_btn_sent[b] = 0;
+			swallow[b] = 1;
+		}
 	}
 
 	for (i = 0; i < PB_COUNT; i++) {
@@ -312,6 +398,7 @@ void IN_Frame(void)
 
 void IN_Shutdown(void)
 {
+	XI_RumbleStop();
 	XI_ReleaseHeld();
 	XI_ResetState();
 }

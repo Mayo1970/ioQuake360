@@ -64,6 +64,42 @@ static int			listener_number;
 static vec3_t		listener_origin;
 static vec3_t		listener_axis[3];
 
+#ifdef __XSDK__
+extern void XI_SetRumble(int large, int small, int durationMs);
+
+static void XI_RumbleForSfx(const char *name, int entityNum, qboolean localSound)
+{
+    if (!name || !name[0]) return;
+
+    if (localSound && strstr(name, "feedback/hit")) {
+        XI_SetRumble(80, 140, 90);
+        return;
+    }
+
+    if (entityNum != listener_number) return;
+
+    if (strstr(name, "/pain")) {
+        XI_SetRumble(200, 80, 180);
+        return;
+    }
+
+    if (!Q_stricmpn(name, "sound/weapons/", 14)) {
+        if (strstr(name, "impact") || strstr(name, "explod"))
+            return;
+        if (strstr(name, "/rocket/")) {
+            XI_SetRumble(255, 220, 160);
+            return;
+        }
+        if (strstr(name, "/shotgun/")) {
+            XI_SetRumble(230, 200, 130);
+            return;
+        }
+        XI_SetRumble(100, 160, 70);
+        return;
+    }
+}
+#endif
+
 int			s_soundtime;		// sample PAIRS
 int   		s_paintedtime; 		// sample PAIRS
 
@@ -549,6 +585,10 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	if (sfx->inMemory == qfalse) {
 		S_memoryLoad(sfx);
 	}
+
+#ifdef __XSDK__
+	XI_RumbleForSfx(sfx->soundName, entityNum, localSound);
+#endif
 
 	if ( s_show->integer == 1 ) {
 		Com_Printf( "%i : %s\n", s_paintedtime, sfx->soundName );
