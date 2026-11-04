@@ -265,6 +265,9 @@ void vk_get_pipeline_def( uint32_t pipeline, Vk_Pipeline_Def *def );
 
 void vk_create_post_process_pipeline( int program_index, uint32_t width, uint32_t height );
 void vk_create_pipelines( void );
+#ifdef __XSDK__
+void vk_create_pipelines_without_swapchain( void );
+#endif
 
 //
 // Rendering setup.
