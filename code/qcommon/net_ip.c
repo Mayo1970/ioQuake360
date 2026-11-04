@@ -75,12 +75,16 @@ static qboolean	winsockInitialized = qfalse;
 #	include <netdb.h>
 #	include <netinet/in.h>
 #	include <arpa/inet.h>
-#	include <net/if.h>
-#	include <sys/ioctl.h>
+#	ifndef __XSDK__
+#		include <net/if.h>
+#		include <sys/ioctl.h>
+#	else
+#		include <fcntl.h>
+#	endif
 #	include <sys/types.h>
 #	include <sys/time.h>
 #	include <unistd.h>
-#	if !defined(__sun) && !defined(__sgi)
+#	if !defined(__XSDK__) && !defined(__sun) && !defined(__sgi)
 #		include <ifaddrs.h>
 #	endif
 
@@ -121,6 +125,7 @@ static cvar_t	*net_dropsim;
 static struct sockaddr	socksRelayAddr;
 
 static SOCKET	ip_socket = INVALID_SOCKET;
+#ifndef __XSDK__
 static SOCKET	ip6_socket = INVALID_SOCKET;
 static SOCKET	socks_socket = INVALID_SOCKET;
 static SOCKET	multicast6_socket = INVALID_SOCKET;
@@ -129,14 +134,20 @@ static SOCKET	multicast6_socket = INVALID_SOCKET;
 static struct ipv6_mreq curgroup;
 // And the currently bound address.
 static struct sockaddr_in6 boundto;
+#else
+static SOCKET	socks_socket = INVALID_SOCKET;
+#endif
 
+#ifndef __XSDK__
 #ifndef IF_NAMESIZE
   #define IF_NAMESIZE 16
+#endif
 #endif
 
 // use an admin local address per default so that network admins can decide on how to handle quake3 traffic.
 #define NET_MULTICAST_IP6 "ff04::696f:7175:616b:6533"
 
+#ifndef __XSDK__
 #define	MAX_IPS		32
 
 typedef struct
@@ -151,6 +162,7 @@ typedef struct
 
 static nip_localaddr_t localIP[MAX_IPS];
 static int numIP;
+#endif
 
 
 //=============================================================================
@@ -227,6 +239,7 @@ static void NetadrToSockadr( netadr_t *a, struct sockaddr *s ) {
 		((struct sockaddr_in *)s)->sin_addr.s_addr = *(int *)&a->ip;
 		((struct sockaddr_in *)s)->sin_port = a->port;
 	}
+#ifndef __XSDK__
 	else if( a->type == NA_IP6 ) {
 		((struct sockaddr_in6 *)s)->sin6_family = AF_INET6;
 		((struct sockaddr_in6 *)s)->sin6_addr = * ((struct in6_addr *) &a->ip6);
@@ -239,6 +252,7 @@ static void NetadrToSockadr( netadr_t *a, struct sockaddr *s ) {
 		((struct sockaddr_in6 *)s)->sin6_addr = curgroup.ipv6mr_multiaddr;
 		((struct sockaddr_in6 *)s)->sin6_port = a->port;
 	}
+#endif
 }
 
 
@@ -248,6 +262,7 @@ static void SockadrToNetadr( struct sockaddr *s, netadr_t *a ) {
 		*(int *)&a->ip = ((struct sockaddr_in *)s)->sin_addr.s_addr;
 		a->port = ((struct sockaddr_in *)s)->sin_port;
 	}
+#ifndef __XSDK__
 	else if(s->sa_family == AF_INET6)
 	{
 		a->type = NA_IP6;
@@ -255,6 +270,7 @@ static void SockadrToNetadr( struct sockaddr *s, netadr_t *a ) {
 		a->port = ((struct sockaddr_in6 *)s)->sin6_port;
 		a->scope_id = ((struct sockaddr_in6 *)s)->sin6_scope_id;
 	}
+#endif
 }
 
 
@@ -297,6 +313,9 @@ static qboolean Sys_StringToSockaddr(const char *s, struct sockaddr *sadr, int s
 	{
 		if(family == AF_UNSPEC)
 		{
+#ifdef __XSDK__
+			search = SearchAddrInfo(res, AF_INET);
+#else
 			// Decide here and now which protocol family to use
 			if(net_enabled->integer & NET_PRIOV6)
 			{
@@ -314,6 +333,7 @@ static qboolean Sys_StringToSockaddr(const char *s, struct sockaddr *sadr, int s
 				if(!search && (net_enabled->integer & NET_ENABLEV6))
 					search = SearchAddrInfo(res, AF_INET6);
 			}
+#endif
 		}
 		else
 			search = SearchAddrInfo(res, family);
@@ -347,6 +367,10 @@ Sys_SockaddrToString
 */
 static void Sys_SockaddrToString(char *dest, int destlen, struct sockaddr *input)
 {
+#ifdef __XSDK__
+	if (!inet_ntop(AF_INET, &((struct sockaddr_in *)input)->sin_addr, dest, (socklen_t)destlen) && destlen > 0)
+		*dest = '\0';
+#else
 	socklen_t inputlen;
 
 	if (input->sa_family == AF_INET6)
@@ -356,6 +380,7 @@ static void Sys_SockaddrToString(char *dest, int destlen, struct sockaddr *input
 
 	if(getnameinfo(input, inputlen, dest, destlen, NULL, 0, NI_NUMERICHOST) && destlen > 0)
 		*dest = '\0';
+#endif
 }
 
 /*
@@ -372,9 +397,15 @@ qboolean Sys_StringToAdr( const char *s, netadr_t *a, netadrtype_t family ) {
 		case NA_IP:
 			fam = AF_INET;
 		break;
+#ifndef __XSDK__
 		case NA_IP6:
 			fam = AF_INET6;
 		break;
+#else
+		case NA_IP6:
+		case NA_MULTICAST6:
+			return qfalse;
+#endif
 		default:
 			fam = AF_UNSPEC;
 		break;
@@ -468,7 +499,11 @@ const char	*NET_AdrToString (netadr_t a)
 		Com_sprintf (s, sizeof(s), "loopback");
 	else if (a.type == NA_BOT)
 		Com_sprintf (s, sizeof(s), "bot");
-	else if (a.type == NA_IP || a.type == NA_IP6)
+	else if (a.type == NA_IP
+#ifndef __XSDK__
+		|| a.type == NA_IP6
+#endif
+	)
 	{
 		struct sockaddr_storage sadr;
 	
@@ -490,8 +525,10 @@ const char	*NET_AdrToStringwPort (netadr_t a)
 		Com_sprintf (s, sizeof(s), "bot");
 	else if(a.type == NA_IP)
 		Com_sprintf(s, sizeof(s), "%s:%hu", NET_AdrToString(a), ntohs(a.port));
+#ifndef __XSDK__
 	else if(a.type == NA_IP6)
 		Com_sprintf(s, sizeof(s), "[%s]:%hu", NET_AdrToString(a), ntohs(a.port));
+#endif
 
 	return s;
 }
@@ -578,6 +615,7 @@ qboolean NET_GetPacket(netadr_t *net_from, msg_t *net_message, fd_set *fdr)
 		}
 	}
 	
+#ifndef __XSDK__
 	if(ip6_socket != INVALID_SOCKET && FD_ISSET(ip6_socket, fdr))
 	{
 		fromlen = sizeof(from);
@@ -635,6 +673,7 @@ qboolean NET_GetPacket(netadr_t *net_from, msg_t *net_message, fd_set *fdr)
 	}
 	
 	
+#endif
 	return qfalse;
 }
 
@@ -651,6 +690,10 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 	int				ret = SOCKET_ERROR;
 	struct sockaddr_storage	addr;
 
+#ifdef __XSDK__
+	if (to.type == NA_IP6 || to.type == NA_MULTICAST6)
+		return;
+#endif
 	if( to.type != NA_BROADCAST && to.type != NA_IP && to.type != NA_IP6 && to.type != NA_MULTICAST6)
 	{
 		Com_Error( ERR_FATAL, "Sys_SendPacket: bad address type" );
@@ -659,8 +702,12 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 
 	if( (ip_socket == INVALID_SOCKET && to.type == NA_IP) ||
 		(ip_socket == INVALID_SOCKET && to.type == NA_BROADCAST) ||
+#ifndef __XSDK__
 		(ip6_socket == INVALID_SOCKET && to.type == NA_IP6) ||
 		(ip6_socket == INVALID_SOCKET && to.type == NA_MULTICAST6) )
+#else
+		0 )
+#endif
 		return;
 
 	if(to.type == NA_MULTICAST6 && (net_enabled->integer & NET_DISABLEMCAST))
@@ -682,8 +729,10 @@ void Sys_SendPacket( int length, const void *data, netadr_t to ) {
 	else {
 		if(addr.ss_family == AF_INET)
 			ret = sendto( ip_socket, data, length, 0, (struct sockaddr *) &addr, sizeof(struct sockaddr_in) );
+#ifndef __XSDK__
 		else if(addr.ss_family == AF_INET6)
 			ret = sendto( ip6_socket, data, length, 0, (struct sockaddr *) &addr, sizeof(struct sockaddr_in6) );
+#endif
 	}
 	if( ret == SOCKET_ERROR ) {
 		int err = socketError;
@@ -746,6 +795,7 @@ qboolean Sys_IsLANAddress( netadr_t adr ) {
 	}
 	
 	// Now compare against the networks this computer is member of.
+#ifndef __XSDK__
 	for(index = 0; index < numIP; index++)
 	{
 		if(localIP[index].type == adr.type)
@@ -784,6 +834,7 @@ qboolean Sys_IsLANAddress( netadr_t adr ) {
 
 		}
 	}
+#endif
 	
 	return qfalse;
 }
@@ -794,6 +845,7 @@ Sys_ShowIP
 ==================
 */
 void Sys_ShowIP(void) {
+#ifndef __XSDK__
 	int i;
 	char addrbuf[NET_ADDRSTRMAXLEN];
 
@@ -806,6 +858,7 @@ void Sys_ShowIP(void) {
 		else if(localIP[i].type == NA_IP6)
 			Com_Printf( "IP6: %s\n", addrbuf);
 	}
+#endif
 }
 
 
@@ -820,7 +873,11 @@ NET_IPSocket
 SOCKET NET_IPSocket( char *net_interface, int port, int *err ) {
 	SOCKET				newsocket;
 	struct sockaddr_in	address;
+#ifndef __XSDK__
 	ioctlarg_t			_true = 1;
+#else
+	int					flags;
+#endif
 	int					i = 1;
 
 	*err = 0;
@@ -838,7 +895,12 @@ SOCKET NET_IPSocket( char *net_interface, int port, int *err ) {
 		return newsocket;
 	}
 	// make it non-blocking
+#ifdef __XSDK__
+	flags = fcntl(newsocket, F_GETFL, 0);
+	if( flags < 0 || fcntl(newsocket, F_SETFL, flags | O_NONBLOCK) < 0 ) {
+#else
 	if( ioctlsocket( newsocket, FIONBIO, &_true ) == SOCKET_ERROR ) {
+#endif
 		Com_Printf( "WARNING: NET_IPSocket: ioctl FIONBIO: %s\n", NET_ErrorString() );
 		*err = socketError;
 		closesocket(newsocket);
@@ -885,6 +947,7 @@ SOCKET NET_IPSocket( char *net_interface, int port, int *err ) {
 NET_IP6Socket
 ====================
 */
+#ifndef __XSDK__
 SOCKET NET_IP6Socket( char *net_interface, int port, struct sockaddr_in6 *bindto, int *err ) {
 	SOCKET				newsocket;
 	struct sockaddr_in6	address;
@@ -1065,6 +1128,10 @@ void NET_LeaveMulticast6(void)
 		multicast6_socket = INVALID_SOCKET;
 	}
 }
+#else
+void NET_JoinMulticast6(void) { }
+void NET_LeaveMulticast6(void) { }
+#endif
 
 /*
 ====================
@@ -1072,6 +1139,7 @@ NET_OpenSocks
 ====================
 */
 void NET_OpenSocks( int port ) {
+#ifndef __XSDK__
 	struct sockaddr_in	address;
 	struct hostent		*h;
 	int					len;
@@ -1230,6 +1298,9 @@ void NET_OpenSocks( int port ) {
 	memset( ((struct sockaddr_in *)&socksRelayAddr)->sin_zero, 0, 8 );
 
 	usingSocks = qtrue;
+#else
+	(void)port;
+#endif
 }
 
 
@@ -1238,6 +1309,7 @@ void NET_OpenSocks( int port ) {
 NET_AddLocalAddress
 =====================
 */
+#ifndef __XSDK__
 static void NET_AddLocalAddress(char *ifname, struct sockaddr *addr, struct sockaddr *netmask)
 {
 	int addrlen;
@@ -1348,6 +1420,9 @@ static void NET_GetLocalAddress( void ) {
 		freeaddrinfo(res);
 }
 #endif
+#else
+static void NET_GetLocalAddress(void) { }
+#endif
 
 /*
 ====================
@@ -1358,10 +1433,14 @@ void NET_OpenIP( void ) {
 	int		i;
 	int		err;
 	int		port;
+#ifndef __XSDK__
 	int		port6;
+#endif
 
 	port = net_port->integer;
+#ifndef __XSDK__
 	port6 = net_port6->integer;
+#endif
 
 	NET_GetLocalAddress();
 
@@ -1369,6 +1448,7 @@ void NET_OpenIP( void ) {
 	// dedicated servers can be started without requiring
 	// a different net_port for each one
 
+#ifndef __XSDK__
 	if(net_enabled->integer & NET_ENABLEV6)
 	{
 		for( i = 0 ; i < 10 ; i++ )
@@ -1388,6 +1468,7 @@ void NET_OpenIP( void ) {
 		if(ip6_socket == INVALID_SOCKET)
 			Com_Printf( "WARNING: Couldn't bind to a v6 ip address.\n");
 	}
+#endif
 
 	if(net_enabled->integer & NET_ENABLEV4)
 	{
@@ -1541,6 +1622,7 @@ void NET_Config( qboolean enableNetworking ) {
 			ip_socket = INVALID_SOCKET;
 		}
 
+#ifndef __XSDK__
 		if(multicast6_socket != INVALID_SOCKET)
 		{
 			if(multicast6_socket != ip6_socket)
@@ -1553,6 +1635,7 @@ void NET_Config( qboolean enableNetworking ) {
 			closesocket( ip6_socket );
 			ip6_socket = INVALID_SOCKET;
 		}
+#endif
 
 		if ( socks_socket != INVALID_SOCKET ) {
 			closesocket( socks_socket );
@@ -1566,7 +1649,9 @@ void NET_Config( qboolean enableNetworking ) {
 		if (net_enabled->integer)
 		{
 			NET_OpenIP();
+#ifndef __XSDK__
 			NET_SetMulticast6();
+#endif
 		}
 	}
 }
@@ -1677,6 +1762,7 @@ void NET_Sleep(int msec)
 
 		highestfd = ip_socket;
 	}
+#ifndef __XSDK__
 	if(ip6_socket != INVALID_SOCKET)
 	{
 		FD_SET(ip6_socket, &fdr);
@@ -1684,6 +1770,7 @@ void NET_Sleep(int msec)
 		if(highestfd == INVALID_SOCKET || ip6_socket > highestfd)
 			highestfd = ip6_socket;
 	}
+#endif
 
 #ifdef _WIN32
 	if(highestfd == INVALID_SOCKET)

@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/times.h>
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
@@ -159,6 +160,21 @@ int Sys_Milliseconds( void )
 
 	milliseconds = ((int64_t)now.tv_sec - timeBase) * 1000 + now.tv_nsec / 1000000;
 	return (int)milliseconds;
+}
+
+// newlib's clock() calls times(), which the SDK lacks; botlib times itself with clock().
+clock_t times( struct tms *buf )
+{
+	clock_t ticks = (clock_t)( (int64_t)Sys_Milliseconds() * CLOCKS_PER_SEC / 1000 );
+
+	if( buf )
+	{
+		buf->tms_utime = ticks;
+		buf->tms_stime = 0;
+		buf->tms_cutime = 0;
+		buf->tms_cstime = 0;
+	}
+	return ticks;
 }
 
 void Sys_Sleep( int msec )
