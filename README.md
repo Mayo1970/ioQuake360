@@ -3,8 +3,8 @@
 A port of [ioQuake3](https://github.com/ioquake/ioq3) to the Xbox 360, built on the
 open [xsdk](https://github.com/openpak/x360-sdk) homebrew SDK. The default build
 uses the null renderer; `RENDERER=vk` statically links
-[Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer and uses
-[vulkan4xenon](https://github.com/xenosworks/vulkan4xenon)'s Vulkan headers.
+[Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer on
+[vulkan4xenon](https://github.com/xenosworks/vulkan4xenon), the Vulkan layer on Xenos.
 
 Three builds are produced from the same source tree. Each is a `.xex` for an
 RGH/JTAG console, with native `cgame` and `qagame`. Open Arena also has a
@@ -18,9 +18,19 @@ native `ui`; ioQuake3 and Team Arena run `vm/ui.qvm` from their paks.
 
 ## Status
 
-**Pre-alpha. Not playable yet.** The repository holds the plan, the docs and
-the SDK submodules. The engine port lands task by task. The first hardware test
-is when Quake III Arena boots into gameplay.
+**Pre-alpha. Not playable yet.** Nothing has run on hardware so far. The first
+hardware test is when Quake III Arena boots into gameplay.
+
+Checked in [Xenia](https://github.com/xenia-canary/xenia-canary) so far:
+
+- The engine, the native game modules and the ui run all three variants
+  headless (null renderer): maps load and bots play to the time limit.
+- With `RENDERER=vk`, the Vulkan renderer creates its device, loads the
+  offline Xenos shader pack and creates every pipeline. Xenia has no display
+  controller, so the swapchain fails there; the build logs the pipeline count
+  and quits.
+
+Not done yet: controller input, rumble, audio, music, networking and text input.
 
 Planned for the first release, to match the PS3 port:
 
