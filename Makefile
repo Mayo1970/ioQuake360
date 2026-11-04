@@ -409,6 +409,8 @@ $(BUILD)/obj/code/sys/xenon_vk.o: $(BUILD)/renderer.stamp
 ifeq ($(RENDERER),vk)
 $(BUILD)/obj/code/sys/xenon_vk.o: CFLAGS += -DQ360_RENDERER_VK
 $(BUILD)/obj/code/renderervk/vk.o: CFLAGS += -Ivulkan4xenon/include
+# The shader pack vk.c includes needs the patched vulkan4xenon.h; a fresh clone has it unpatched.
+$(BUILD)/obj/code/renderervk/vk.o: | vulkan4xenon-patches
 endif
 
 $(BUILD)/obj/%.o: %.c
