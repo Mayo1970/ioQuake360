@@ -20,7 +20,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
 
-#ifdef DEDICATED
+#ifdef __XSDK__
+#	define Sys_LoadLibrary(f) NULL
+#	define Sys_UnloadLibrary(h) ((void)0)
+#	define Sys_LoadFunction(h,fn) NULL
+#	define Sys_LibraryError() "no dynamic libraries on xbox360"
+#elif defined(DEDICATED)
 #	ifdef _WIN32
 #		include <windows.h>
 #		define Sys_LoadLibrary(f) (void*)LoadLibrary(f)

@@ -23,7 +23,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 
-#ifndef DEDICATED
+// The 360 build has no SDL.
+#if !defined(DEDICATED) && !defined(__XSDK__)
 #ifdef USE_INTERNAL_SDL_HEADERS
 #	include "SDL_version.h"
 #else
