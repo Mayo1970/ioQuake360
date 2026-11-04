@@ -9,9 +9,12 @@ CC := $(TOOLCHAIN)gcc
 PYTHON ?= python3
 XSDK ?= x360-sdk
 ARGS ?=
+RENDERER ?= null
 
 ZLIB_DIR := code/thirdparty/zlib-1.3.1
 ZLIB_SOURCES := $(wildcard $(ZLIB_DIR)/*.c)
+JPEG_DIR := code/thirdparty/jpeg-9f
+JPEG_SOURCES := $(wildcard $(JPEG_DIR)/j*.c)
 ENGINE_SOURCES := \
 	code/qcommon/cm_load.c \
 	code/qcommon/cm_patch.c \
@@ -55,6 +58,7 @@ ENGINE_SOURCES := \
 	code/client/cl_scrn.c \
 	code/client/cl_ui.c \
 	code/client/cl_avi.c \
+	code/client/cl_jpeg.c \
 	code/client/snd_adpcm.c \
 	code/client/snd_dma.c \
 	code/client/snd_mem.c \
@@ -67,17 +71,28 @@ ENGINE_SOURCES := \
 	code/null/null_input.c \
 	code/sys/sys_xenon.c \
 	code/sys/xenon_main.c \
-	code/sys/xenon_null_renderer.c \
+	code/sys/xenon_vk.c \
 	code/sys/xenon_snddma.c
 
-SOURCES := $(ENGINE_SOURCES) $(ZLIB_SOURCES)
+ifeq ($(RENDERER),null)
+ENGINE_SOURCES += code/sys/xenon_null_renderer.c
+else ifeq ($(RENDERER),vk)
+ENGINE_SOURCES += $(wildcard code/renderervk/*.c) \
+	$(wildcard code/renderervk/renderercommon/*.c) \
+	code/renderercommon/puff.c
+else
+$(error Unsupported RENDERER '$(RENDERER)' (expected null or vk))
+endif
+
+SOURCES := $(ENGINE_SOURCES) $(ZLIB_SOURCES) $(JPEG_SOURCES)
 OBJECTS := $(patsubst %.c,$(BUILD)/obj/%.o,$(SOURCES))
 DEPS := $(OBJECTS:.o=.d)
 ARGS_STAMP := $(BUILD)/args.stamp
 
-DEFINES := -DBOTLIB -DNO_VM_COMPILED -DUSE_INTERNAL_ZLIB -DNO_GZIP
+DEFINES := -DBOTLIB -DNO_VM_COMPILED -DUSE_INTERNAL_ZLIB -DUSE_INTERNAL_JPEG -DNO_GZIP
 CFLAGS := -mcpu=cell -fno-pic -fno-strict-aliasing -std=gnu17 -O2 -Wall -Wextra \
-	-I$(XSDK)/include -I$(ZLIB_DIR) -MMD -MP $(DEFINES) $(DEFINES_EXTRA) \
+	-I$(XSDK)/include -I$(ZLIB_DIR) -I$(JPEG_DIR) -Ivulkan4xenon/third_party/vulkan-headers/include \
+	-MMD -MP $(DEFINES) $(DEFINES_EXTRA) \
 	-DQ360_TITLE='"$(TITLE)"' -DQ360_ARGS='"$(ARGS)"'
 ifeq ($(DEBUG),1)
   CFLAGS += -DX360_DEBUG -g
@@ -312,6 +327,12 @@ LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
 LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
 
 $(patsubst %.c,$(BUILD)/obj/%.o,$(ZLIB_SOURCES)): CFLAGS += -w
+$(patsubst %.c,$(BUILD)/obj/%.o,$(JPEG_SOURCES)): CFLAGS += -w
+
+# The object list changes with RENDERER but no object gets newer, so this stamp forces the relink.
+$(BUILD)/renderer.stamp: FORCE
+	mkdir -p $(@D)
+	@if [ ! -f "$@" ] || [ "$$(cat "$@")" != '$(RENDERER)' ]; then printf '%s' '$(RENDERER)' > "$@"; fi
 
 CLEAN_BUILD_GOALS := $(filter-out clean,$(MAKECMDGOALS))
 ifneq ($(filter clean,$(MAKECMDGOALS)),)
@@ -400,7 +421,7 @@ $(BUILD)/ui_native.o: $(UI_OBJECTS) code/sys/xenon_module.ld
 		-G __ui_data_start -G __ui_data_end -G __ui_bss_start -G __ui_bss_end \
 		$(BUILD)/ui_renamed.o $@
 
-$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
+$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.stamp $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(LIBS)
 

@@ -1543,7 +1543,7 @@ static void derefVariable( const char *name, char *buf, int size )
 		Com_sprintf( buf, size, "%i", glConfig.vidHeight );
 		return;
 	}
-	ri.Cvar_VariableStringBuffer( name, buf, size );
+	Cvar_VariableStringBuffer( name, buf, size );
 }
 
 

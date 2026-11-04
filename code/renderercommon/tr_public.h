@@ -24,6 +24,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_types.h"
 
+#ifdef __XSDK__
+#include <vulkan/vulkan.h>
+#endif
+
 #define	REF_API_VERSION		8
 
 //
@@ -180,6 +184,19 @@ typedef struct {
 	void	(*Sys_GLimpSafeInit)( void );
 	void	(*Sys_GLimpInit)( void );
 	qboolean (*Sys_LowPhysicalMemory)( void );
+
+#ifdef __XSDK__
+	void	(*GLimp_InitGamma)( glconfig_t *config );
+	void	(*GLimp_SetGamma)( unsigned char red[256], unsigned char green[256], unsigned char blue[256] );
+	void	(*VKimp_Init)( glconfig_t *config );
+	void	(*VKimp_Shutdown)( qboolean unloadDLL );
+	void	*(*VK_GetInstanceProcAddr)( VkInstance instance, const char *name );
+	qboolean (*VK_CreateSurface)( VkInstance instance, VkSurfaceKHR *pSurface );
+
+	size_t	(*CL_SaveJPGToBuffer)( byte *buffer, size_t bufSize, int quality, int image_width, int image_height, byte *image_buffer, int padding );
+	void	(*CL_SaveJPG)( const char *filename, int quality, int image_width, int image_height, byte *image_buffer, int padding );
+	void	(*CL_LoadJPG)( const char *filename, unsigned char **pic, int *width, int *height );
+#endif
 } refimport_t;
 
 

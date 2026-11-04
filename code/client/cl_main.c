@@ -27,6 +27,18 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../sys/sys_local.h"
 #include "../sys/sys_loadlib.h"
 
+#ifdef __XSDK__
+extern void GLimp_InitGamma( glconfig_t *config );
+extern void GLimp_SetGamma( unsigned char red[256], unsigned char green[256], unsigned char blue[256] );
+extern void VKimp_Init( glconfig_t *config );
+extern void VKimp_Shutdown( qboolean unloadDLL );
+extern void *VK_GetInstanceProcAddr( VkInstance instance, const char *name );
+extern qboolean VK_CreateSurface( VkInstance instance, VkSurfaceKHR *pSurface );
+extern size_t CL_SaveJPGToBuffer( byte *buffer, size_t bufSize, int quality, int image_width, int image_height, byte *image_buffer, int padding );
+extern void CL_SaveJPG( const char *filename, int quality, int image_width, int image_height, byte *image_buffer, int padding );
+extern void CL_LoadJPG( const char *filename, unsigned char **pic, int *width, int *height );
+#endif
+
 #ifdef USE_MUMBLE
 #include "libmumblelink.h"
 #endif
@@ -3348,6 +3360,18 @@ void CL_InitRef( void ) {
 	ri.Sys_GLimpSafeInit = Sys_GLimpSafeInit;
 	ri.Sys_GLimpInit = Sys_GLimpInit;
 	ri.Sys_LowPhysicalMemory = Sys_LowPhysicalMemory;
+
+#ifdef __XSDK__
+	ri.GLimp_InitGamma = GLimp_InitGamma;
+	ri.GLimp_SetGamma = GLimp_SetGamma;
+	ri.VKimp_Init = VKimp_Init;
+	ri.VKimp_Shutdown = VKimp_Shutdown;
+	ri.VK_GetInstanceProcAddr = VK_GetInstanceProcAddr;
+	ri.VK_CreateSurface = VK_CreateSurface;
+	ri.CL_SaveJPGToBuffer = CL_SaveJPGToBuffer;
+	ri.CL_SaveJPG = CL_SaveJPG;
+	ri.CL_LoadJPG = CL_LoadJPG;
+#endif
 
 	ret = GetRefAPI( REF_API_VERSION, &ri );
 

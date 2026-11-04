@@ -10,18 +10,15 @@ terms of the MIT and BSD licences below.
 |---|---|---|---|
 | ioquake3 (id Software, ioquake3 contributors) | `code/` (vendored) | GPL-2.0 | Yes |
 | zlib 1.3.1 (Jean-loup Gailly and Mark Adler) | `code/thirdparty/zlib-1.3.1/` (vendored from ioq3 87a99d18) | zlib License | Yes |
-| Quake3e Vulkan renderer | `code/renderervk/` (vendored) | GPL-2.0 | Yes |
+| Quake3e Vulkan renderer | `code/renderervk/` (vendored) | GPL-2.0 | Only with `RENDERER=vk` |
+| libjpeg 9f (Independent JPEG Group) | `code/thirdparty/jpeg-9f/` (vendored from ioq3 87a99d18) | IJG licence | Yes |
 | OpenArena game code, `oa-0.8.8` | `code/oa/` (vendored) | GPL-2.0 | Yes (Open Arena build) |
 | xsdk | `x360-sdk/` (submodule) | MIT, with BSD-3 parts | Yes (`libxsdk.a`) |
-| vulkan4xenon | `vulkan4xenon/` (submodule) | MIT | Yes (`libvulkan4xenon.a`) |
+| vulkan4xenon | `vulkan4xenon/` (submodule) | MIT | No (Q360-14 uses headers only) |
 | Khronos Vulkan headers | `vulkan4xenon/third_party/vulkan-headers/` | Apache-2.0 or MIT | Headers only |
-| Khronos Vulkan headers | `code/renderervk/renderercommon/vulkan/` | Apache-2.0 | Headers only |
 | GCC runtime (libgcc, libstdc++) | toolchain | GPL-3.0 with the GCC Runtime Library Exception | Yes |
 | newlib | toolchain | `COPYING.NEWLIB` (permissive) | Yes |
 | GCC, binutils and the SDK's patches to them | `docker/xsdk-toolchain/` | GPL-3.0-or-later | No (build tools) |
-
-Libraries vendored later (for example libjpeg, libogg and libvorbis) add their section here in the same change
-that vendors them.
 
 ## ioquake3, Quake3e and OpenArena
 
@@ -35,7 +32,12 @@ headers. The Quake III Arena, Team Arena and OpenArena **game data** is not cove
   `code/`: botlib, cgame, client, game, null, q3_ui, qcommon, renderercommon, server, sys, ui; `ui/menudef.h` copied
   unchanged to `ui/menudef.h` (the game code includes it as `../../ui/menudef.h`). GPL-2.0.
 - Quake3e: https://github.com/ec-/Quake3e, commit 3173cef096dd0cb2fea26d91bce71049061f5a13. `code/renderervk` copied
-  unchanged to `code/renderervk/`; `code/renderercommon` copied unchanged to `code/renderervk/renderercommon/`. GPL-2.0.
+  to `code/renderervk/` and `code/renderercommon` to `code/renderervk/renderercommon/`, then adapted to ioq3's renderer
+  API (`docs/RENDERER.md`). The copied `renderercommon/tr_public.h`, `tr_types.h` and `vulkan/` headers were deleted, so
+  the renderer uses ioq3's public API and the Vulkan headers from `vulkan4xenon`. `code/client/cl_jpeg.c` copied to
+  `code/client/cl_jpeg.c`, then adapted to ioq3's client and jpeg-9f. GPL-2.0.
+- libjpeg 9f: copied unchanged from ioq3 commit 87a99d18206e878a20289f05ac3c16005dcae5c3 at
+  `code/thirdparty/jpeg-9f/`.
 - OpenArena gamecode: https://github.com/OpenArena/gamecode, branch oa-0.8.8, copied unchanged from the Ioquake3-PS3
   port's `code/oa/` to `code/oa/`. `code/q3_ui` and `code/ui` (absent from the PS3 copy) copied unchanged from
   branch oa-0.8.8, commit 1006052, to `code/oa/code/q3_ui/` and `code/oa/code/ui/`. GPL-2.0.
@@ -68,8 +70,18 @@ Jean-loup Gailly        Mark Adler
 jloup@gzip.org          madler@alumni.caltech.edu
 ```
 
-The Khronos Vulkan headers in `code/renderervk/renderercommon/vulkan/` are under Apache-2.0 (their SPDX line). Upstream
-stores them with CRLF line endings; this repo stores them with LF; the content is otherwise identical.
+The Vulkan headers used by the renderer are from `vulkan4xenon/third_party/vulkan-headers/` and are available under
+Apache-2.0 or MIT, as stated in `vulkan4xenon/third_party/vulkan-headers/LICENSE.md`.
+
+## libjpeg 9f
+
+The Independent JPEG Group's jpeg-9f sources are copied unchanged from ioq3 commit 87a99d18206e878a20289f05ac3c16005dcae5c3
+at `code/thirdparty/jpeg-9f/`. Copyright (C) 1991-2024, Thomas G. Lane, Guido Vollbeding. IJG permits use, copying, modification and distribution without a fee. Source distributions must include
+the original README copyright and no-warranty notice unchanged, and identify changes in accompanying documentation.
+Binary distributions must include the acknowledgment: "this software is based in part on the work of the Independent JPEG
+Group." Do not use an IJG author's or company's name to endorse derived products without prior written permission; refer
+to the software as IJG software. It is provided without warranty or liability, and these terms also apply to derived
+software. See the [IJG licence terms](https://jpegclub.org/reference/libjpeg-license/).
 
 ## xsdk
 
