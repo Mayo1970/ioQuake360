@@ -88,8 +88,7 @@ endif
 NATIVE_MODULE_OBJECTS :=
 NATIVE_MODULE_DEPS :=
 
-# Q3A links qagame, cgame and q3_ui natively (ioq3 cmake/basegame.cmake lists); TA and OA stay on QVMs until Q360-11/12.
-ifneq ($(TA),1)
+# Q3A and TA link qagame, cgame and ui natively; OA stays on QVMs until Q360-12.
 ifneq ($(OA),1)
 CFLAGS += -DQ360_NATIVE_MODULES
 
@@ -157,6 +156,23 @@ CGAME_SOURCES := \
 	code/qcommon/q_shared.c \
 	code/cgame/cg_syscalls.c
 
+ifeq ($(TA),1)
+CGAME_SOURCES += \
+	code/cgame/cg_newdraw.c \
+	code/ui/ui_shared.c
+
+UI_SOURCES := \
+	code/ui/ui_main.c \
+	code/game/bg_misc.c \
+	code/game/bg_lib.c \
+	code/ui/ui_atoms.c \
+	code/ui/ui_gameinfo.c \
+	code/ui/ui_players.c \
+	code/ui/ui_shared.c \
+	code/qcommon/q_math.c \
+	code/qcommon/q_shared.c \
+	code/ui/ui_syscalls.c
+else
 UI_SOURCES := \
 	code/q3_ui/ui_main.c \
 	code/game/bg_misc.c \
@@ -202,6 +218,7 @@ UI_SOURCES := \
 	code/qcommon/q_math.c \
 	code/qcommon/q_shared.c \
 	code/ui/ui_syscalls.c
+endif
 
 QAGAME_OBJECTS := $(patsubst %.c,$(BUILD)/qagame/%.o,$(QAGAME_SOURCES))
 CGAME_OBJECTS := $(patsubst %.c,$(BUILD)/cgame/%.o,$(CGAME_SOURCES))
@@ -213,7 +230,6 @@ UI_CFLAGS := $(CFLAGS) -DUI -fno-common -G 0
 NATIVE_MODULE_OBJECTS := $(BUILD)/qagame_native.o $(BUILD)/cgame_native.o $(BUILD)/ui_native.o
 NATIVE_MODULE_DEPS := $(QAGAME_OBJECTS:.o=.d) $(CGAME_OBJECTS:.o=.d) $(UI_OBJECTS:.o=.d)
 DEPS += $(NATIVE_MODULE_DEPS)
-endif
 endif
 LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
 LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
@@ -261,7 +277,6 @@ $(BUILD)/obj/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-ifneq ($(TA),1)
 ifneq ($(OA),1)
 $(BUILD)/qagame/%.o: %.c
 	mkdir -p $(@D)
@@ -308,7 +323,6 @@ $(BUILD)/ui_native.o: $(UI_OBJECTS) code/sys/xenon_module.ld
 	$(TOOLCHAIN)objcopy -G ui_dllEntry -G ui_vmMain \
 		-G __ui_data_start -G __ui_data_end -G __ui_bss_start -G __ui_bss_end \
 		$(BUILD)/ui_renamed.o $@
-endif
 endif
 
 $(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
