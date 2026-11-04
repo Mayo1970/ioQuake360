@@ -85,6 +85,136 @@ else
   CFLAGS += -DNDEBUG
 endif
 
+NATIVE_MODULE_OBJECTS :=
+NATIVE_MODULE_DEPS :=
+
+# Q3A links qagame, cgame and q3_ui natively (ioq3 cmake/basegame.cmake lists); TA and OA stay on QVMs until Q360-11/12.
+ifneq ($(TA),1)
+ifneq ($(OA),1)
+CFLAGS += -DQ360_NATIVE_MODULES
+
+QAGAME_SOURCES := \
+	code/game/g_main.c \
+	code/game/ai_chat.c \
+	code/game/ai_cmd.c \
+	code/game/ai_dmnet.c \
+	code/game/ai_dmq3.c \
+	code/game/ai_main.c \
+	code/game/ai_team.c \
+	code/game/ai_vcmd.c \
+	code/game/bg_misc.c \
+	code/game/bg_pmove.c \
+	code/game/bg_slidemove.c \
+	code/game/bg_lib.c \
+	code/game/g_active.c \
+	code/game/g_arenas.c \
+	code/game/g_bot.c \
+	code/game/g_client.c \
+	code/game/g_cmds.c \
+	code/game/g_combat.c \
+	code/game/g_items.c \
+	code/game/g_mem.c \
+	code/game/g_misc.c \
+	code/game/g_missile.c \
+	code/game/g_mover.c \
+	code/game/g_session.c \
+	code/game/g_spawn.c \
+	code/game/g_svcmds.c \
+	code/game/g_target.c \
+	code/game/g_team.c \
+	code/game/g_trigger.c \
+	code/game/g_utils.c \
+	code/game/g_weapon.c \
+	code/qcommon/q_math.c \
+	code/qcommon/q_shared.c \
+	code/game/g_syscalls.c
+
+CGAME_SOURCES := \
+	code/cgame/cg_main.c \
+	code/game/bg_misc.c \
+	code/game/bg_pmove.c \
+	code/game/bg_slidemove.c \
+	code/game/bg_lib.c \
+	code/cgame/cg_consolecmds.c \
+	code/cgame/cg_draw.c \
+	code/cgame/cg_drawtools.c \
+	code/cgame/cg_effects.c \
+	code/cgame/cg_ents.c \
+	code/cgame/cg_event.c \
+	code/cgame/cg_info.c \
+	code/cgame/cg_localents.c \
+	code/cgame/cg_marks.c \
+	code/cgame/cg_particles.c \
+	code/cgame/cg_players.c \
+	code/cgame/cg_playerstate.c \
+	code/cgame/cg_predict.c \
+	code/cgame/cg_scoreboard.c \
+	code/cgame/cg_servercmds.c \
+	code/cgame/cg_snapshot.c \
+	code/cgame/cg_view.c \
+	code/cgame/cg_weapons.c \
+	code/qcommon/q_math.c \
+	code/qcommon/q_shared.c \
+	code/cgame/cg_syscalls.c
+
+UI_SOURCES := \
+	code/q3_ui/ui_main.c \
+	code/game/bg_misc.c \
+	code/game/bg_lib.c \
+	code/q3_ui/ui_addbots.c \
+	code/q3_ui/ui_atoms.c \
+	code/q3_ui/ui_cdkey.c \
+	code/q3_ui/ui_cinematics.c \
+	code/q3_ui/ui_confirm.c \
+	code/q3_ui/ui_connect.c \
+	code/q3_ui/ui_controls2.c \
+	code/q3_ui/ui_credits.c \
+	code/q3_ui/ui_demo2.c \
+	code/q3_ui/ui_display.c \
+	code/q3_ui/ui_gameinfo.c \
+	code/q3_ui/ui_ingame.c \
+	code/q3_ui/ui_loadconfig.c \
+	code/q3_ui/ui_menu.c \
+	code/q3_ui/ui_mfield.c \
+	code/q3_ui/ui_mods.c \
+	code/q3_ui/ui_network.c \
+	code/q3_ui/ui_options.c \
+	code/q3_ui/ui_playermodel.c \
+	code/q3_ui/ui_players.c \
+	code/q3_ui/ui_playersettings.c \
+	code/q3_ui/ui_preferences.c \
+	code/q3_ui/ui_qmenu.c \
+	code/q3_ui/ui_removebots.c \
+	code/q3_ui/ui_saveconfig.c \
+	code/q3_ui/ui_serverinfo.c \
+	code/q3_ui/ui_servers2.c \
+	code/q3_ui/ui_setup.c \
+	code/q3_ui/ui_sound.c \
+	code/q3_ui/ui_sparena.c \
+	code/q3_ui/ui_specifyserver.c \
+	code/q3_ui/ui_splevel.c \
+	code/q3_ui/ui_sppostgame.c \
+	code/q3_ui/ui_spskill.c \
+	code/q3_ui/ui_startserver.c \
+	code/q3_ui/ui_team.c \
+	code/q3_ui/ui_teamorders.c \
+	code/q3_ui/ui_video.c \
+	code/qcommon/q_math.c \
+	code/qcommon/q_shared.c \
+	code/ui/ui_syscalls.c
+
+QAGAME_OBJECTS := $(patsubst %.c,$(BUILD)/qagame/%.o,$(QAGAME_SOURCES))
+CGAME_OBJECTS := $(patsubst %.c,$(BUILD)/cgame/%.o,$(CGAME_SOURCES))
+UI_OBJECTS := $(patsubst %.c,$(BUILD)/ui/%.o,$(UI_SOURCES))
+# -G 0 and -fno-common keep all module data in .data/.bss, inside the brackets of code/sys/xenon_module.ld.
+QAGAME_CFLAGS := $(CFLAGS) -DQAGAME -fno-common -G 0
+CGAME_CFLAGS := $(CFLAGS) -DCGAME -fno-common -G 0
+UI_CFLAGS := $(CFLAGS) -DUI -fno-common -G 0
+NATIVE_MODULE_OBJECTS := $(BUILD)/qagame_native.o $(BUILD)/cgame_native.o $(BUILD)/ui_native.o
+NATIVE_MODULE_DEPS := $(QAGAME_OBJECTS:.o=.d) $(CGAME_OBJECTS:.o=.d) $(UI_OBJECTS:.o=.d)
+DEPS += $(NATIVE_MODULE_DEPS)
+endif
+endif
 LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
 LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
 
@@ -131,9 +261,59 @@ $(BUILD)/obj/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/$(TARGET).elf: $(OBJECTS) $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
+ifneq ($(TA),1)
+ifneq ($(OA),1)
+$(BUILD)/qagame/%.o: %.c
 	mkdir -p $(@D)
-	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(LIBS)
+	$(CC) $(QAGAME_CFLAGS) -c $< -o $@
+
+$(BUILD)/cgame/%.o: %.c
+	mkdir -p $(@D)
+	$(CC) $(CGAME_CFLAGS) -c $< -o $@
+
+$(BUILD)/ui/%.o: %.c
+	mkdir -p $(@D)
+	$(CC) $(UI_CFLAGS) -c $< -o $@
+
+# Each module links on its own, then hides every global but its entry points, so its q_shared/bg_* copies stay private.
+$(BUILD)/qagame_native.o: $(QAGAME_OBJECTS) code/sys/xenon_module.ld
+	mkdir -p $(@D)
+	$(TOOLCHAIN)ld -r -T code/sys/xenon_module.ld $(QAGAME_OBJECTS) -o $(BUILD)/qagame_partial.o
+	$(TOOLCHAIN)objcopy --redefine-sym dllEntry=qagame_dllEntry --redefine-sym vmMain=qagame_vmMain \
+		--redefine-sym __module_data_start=__qagame_data_start --redefine-sym __module_data_end=__qagame_data_end \
+		--redefine-sym __module_bss_start=__qagame_bss_start --redefine-sym __module_bss_end=__qagame_bss_end \
+		$(BUILD)/qagame_partial.o $(BUILD)/qagame_renamed.o
+	$(TOOLCHAIN)objcopy -G qagame_dllEntry -G qagame_vmMain \
+		-G __qagame_data_start -G __qagame_data_end -G __qagame_bss_start -G __qagame_bss_end \
+		$(BUILD)/qagame_renamed.o $@
+
+$(BUILD)/cgame_native.o: $(CGAME_OBJECTS) code/sys/xenon_module.ld
+	mkdir -p $(@D)
+	$(TOOLCHAIN)ld -r -T code/sys/xenon_module.ld $(CGAME_OBJECTS) -o $(BUILD)/cgame_partial.o
+	$(TOOLCHAIN)objcopy --redefine-sym dllEntry=cgame_dllEntry --redefine-sym vmMain=cgame_vmMain \
+		--redefine-sym __module_data_start=__cgame_data_start --redefine-sym __module_data_end=__cgame_data_end \
+		--redefine-sym __module_bss_start=__cgame_bss_start --redefine-sym __module_bss_end=__cgame_bss_end \
+		$(BUILD)/cgame_partial.o $(BUILD)/cgame_renamed.o
+	$(TOOLCHAIN)objcopy -G cgame_dllEntry -G cgame_vmMain \
+		-G __cgame_data_start -G __cgame_data_end -G __cgame_bss_start -G __cgame_bss_end \
+		$(BUILD)/cgame_renamed.o $@
+
+$(BUILD)/ui_native.o: $(UI_OBJECTS) code/sys/xenon_module.ld
+	mkdir -p $(@D)
+	$(TOOLCHAIN)ld -r -T code/sys/xenon_module.ld $(UI_OBJECTS) -o $(BUILD)/ui_partial.o
+	$(TOOLCHAIN)objcopy --redefine-sym dllEntry=ui_dllEntry --redefine-sym vmMain=ui_vmMain \
+		--redefine-sym __module_data_start=__ui_data_start --redefine-sym __module_data_end=__ui_data_end \
+		--redefine-sym __module_bss_start=__ui_bss_start --redefine-sym __module_bss_end=__ui_bss_end \
+		$(BUILD)/ui_partial.o $(BUILD)/ui_renamed.o
+	$(TOOLCHAIN)objcopy -G ui_dllEntry -G ui_vmMain \
+		-G __ui_data_start -G __ui_data_end -G __ui_bss_start -G __ui_bss_end \
+		$(BUILD)/ui_renamed.o $@
+endif
+endif
+
+$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
+	mkdir -p $(@D)
+	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(LIBS)
 
 $(BUILD)/$(TARGET).xex: $(BUILD)/$(TARGET).elf $(XSDK)/tools/elf2xex.py
 	$(PYTHON) $(XSDK)/tools/elf2xex.py $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).xex

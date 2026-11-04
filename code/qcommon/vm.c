@@ -610,6 +610,18 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 
 	Q_strncpyz(vm->name, module, sizeof(vm->name));
 
+#ifdef Q360_NATIVE_MODULES
+	vm->dllHandle = Sys_LoadGameDll( module, &vm->entryPoint, VM_DllSyscall );
+	if( vm->dllHandle )
+	{
+		vm->systemCall = systemCalls;
+		Com_Printf( "%s: using linked-in native code\n", module );
+		return vm;
+	}
+	Com_Error( ERR_FATAL, "VM_Create: failed to load linked-in native module %s", module );
+	return NULL;
+#endif
+
 	do
 	{
 		retval = FS_FindVM(&startSearch, filename, sizeof(filename), module, (interpret == VMI_NATIVE));

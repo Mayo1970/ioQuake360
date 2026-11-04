@@ -32,7 +32,8 @@ headers. The Quake III Arena, Team Arena and OpenArena **game data** is not cove
 ## Vendored sources
 
 - ioquake3: https://github.com/ioquake/ioq3, commit 87a99d18206e878a20289f05ac3c16005dcae5c3. Copied unchanged to
-  `code/`: botlib, cgame, client, game, null, q3_ui, qcommon, renderercommon, server, sys, ui. GPL-2.0.
+  `code/`: botlib, cgame, client, game, null, q3_ui, qcommon, renderercommon, server, sys, ui; `ui/menudef.h` copied
+  unchanged to `ui/menudef.h` (the game code includes it as `../../ui/menudef.h`). GPL-2.0.
 - Quake3e: https://github.com/ec-/Quake3e, commit 3173cef096dd0cb2fea26d91bce71049061f5a13. `code/renderervk` copied
   unchanged to `code/renderervk/`; `code/renderercommon` copied unchanged to `code/renderervk/renderercommon/`. GPL-2.0.
 - OpenArena gamecode: https://github.com/OpenArena/gamecode, branch oa-0.8.8, copied unchanged from the Ioquake3-PS3
