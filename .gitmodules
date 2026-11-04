@@ -1,6 +1,8 @@
 [submodule "x360-sdk"]
 	path = x360-sdk
 	url = https://github.com/openpak/x360-sdk.git
+	ignore = dirty
 [submodule "vulkan4xenon"]
 	path = vulkan4xenon
 	url = https://github.com/xenosworks/vulkan4xenon.git
+	ignore = dirty
