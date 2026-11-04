@@ -324,12 +324,17 @@ NATIVE_MODULE_DEPS += $(UI_OBJECTS:.o=.d)
 endif
 DEPS += $(NATIVE_MODULE_DEPS)
 LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
+ifeq ($(RENDERER),vk)
+VULKAN4XENON_LIBRARY := vulkan4xenon/build/libvulkan4xenon.a
+LIBS := -Wl,--start-group $(VULKAN4XENON_LIBRARY) $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
+else
 LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
+endif
 
 $(patsubst %.c,$(BUILD)/obj/%.o,$(ZLIB_SOURCES)): CFLAGS += -w
 $(patsubst %.c,$(BUILD)/obj/%.o,$(JPEG_SOURCES)): CFLAGS += -w
 
-# The object list changes with RENDERER but no object gets newer, so this stamp forces the relink.
+# The object list and xenon_vk.o's flags change with RENDERER, so this stamp forces the rebuild and relink.
 $(BUILD)/renderer.stamp: FORCE
 	mkdir -p $(@D)
 	@if [ ! -f "$@" ] || [ "$$(cat "$@")" != '$(RENDERER)' ]; then printf '%s' '$(RENDERER)' > "$@"; fi
@@ -363,6 +368,11 @@ all-flavors:
 $(XSDK)/build/libxsdk.a: FORCE
 	$(MAKE) -C $(XSDK) build/libxsdk.a
 
+ifeq ($(RENDERER),vk)
+$(VULKAN4XENON_LIBRARY): FORCE
+	$(MAKE) -C vulkan4xenon XSDK=../$(XSDK) TOOLCHAIN=$(TOOLCHAIN) build/libvulkan4xenon.a
+endif
+
 FORCE:
 
 $(ARGS_STAMP): FORCE
@@ -370,6 +380,10 @@ $(ARGS_STAMP): FORCE
 	@if [ ! -f "$@" ] || [ "$$(cat "$@")" != '$(ARGS)' ]; then printf '%s' '$(ARGS)' > "$@"; fi
 
 $(BUILD)/obj/code/sys/xenon_main.o: $(ARGS_STAMP)
+$(BUILD)/obj/code/sys/xenon_vk.o: $(BUILD)/renderer.stamp
+ifeq ($(RENDERER),vk)
+$(BUILD)/obj/code/sys/xenon_vk.o: CFLAGS += -DQ360_RENDERER_VK
+endif
 
 $(BUILD)/obj/%.o: %.c
 	mkdir -p $(@D)
@@ -421,7 +435,7 @@ $(BUILD)/ui_native.o: $(UI_OBJECTS) code/sys/xenon_module.ld
 		-G __ui_data_start -G __ui_data_end -G __ui_bss_start -G __ui_bss_end \
 		$(BUILD)/ui_renamed.o $@
 
-$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.stamp $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
+$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.stamp $(XSDK)/build/libxsdk.a $(VULKAN4XENON_LIBRARY) $(XSDK)/src/xsdk.ld
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(LIBS)
 

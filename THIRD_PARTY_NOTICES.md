@@ -14,7 +14,7 @@ terms of the MIT and BSD licences below.
 | libjpeg 9f (Independent JPEG Group) | `code/thirdparty/jpeg-9f/` (vendored from ioq3 87a99d18) | IJG licence | Yes |
 | OpenArena game code, `oa-0.8.8` | `code/oa/` (vendored) | GPL-2.0 | Yes (Open Arena build) |
 | xsdk | `x360-sdk/` (submodule) | MIT, with BSD-3 parts | Yes (`libxsdk.a`) |
-| vulkan4xenon | `vulkan4xenon/` (submodule) | MIT | No (Q360-14 uses headers only) |
+| vulkan4xenon | `vulkan4xenon/` (submodule) | MIT | Yes (`libvulkan4xenon.a`, `RENDERER=vk`) |
 | Khronos Vulkan headers | `vulkan4xenon/third_party/vulkan-headers/` | Apache-2.0 or MIT | Headers only |
 | GCC runtime (libgcc, libstdc++) | toolchain | GPL-3.0 with the GCC Runtime Library Exception | Yes |
 | newlib | toolchain | `COPYING.NEWLIB` (permissive) | Yes |

@@ -1444,6 +1444,10 @@ static qboolean vk_blit_enabled( VkPhysicalDevice physical_device, const VkForma
 
 static VkFormat get_hdr_format( VkFormat base_format )
 {
+#ifdef __XSDK__
+	// The r_hdr formats are not colour attachments on vulkan4xenon (SUPPORT.md, Formats).
+	return base_format;
+#endif
 	if ( r_fbo->integer == 0 ) {
 		return base_format;
 	}
@@ -2487,10 +2491,13 @@ void vk_update_attachment_descriptors( void ) {
 void vk_init_descriptors( void )
 {
 	VkDescriptorSetAllocateInfo alloc;
+#ifndef __XSDK__
 	VkDescriptorBufferInfo info;
 	VkWriteDescriptorSet desc;
+#endif
 	uint32_t i;
 
+#ifndef __XSDK__
 	alloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	alloc.pNext = NULL;
 	alloc.descriptorPool = vk.descriptor_pool;
@@ -2515,6 +2522,7 @@ void vk_init_descriptors( void )
 	desc.pTexelBufferView = NULL;
 
 	qvkUpdateDescriptorSets( vk.device, 1, &desc, 0, NULL );
+#endif
 
 	// allocated and update descriptor set
 	for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ )
@@ -2630,6 +2638,7 @@ static void vk_create_geometry_buffers( VkDeviceSize size )
 }
 
 
+#ifndef __XSDK__
 static void vk_create_storage_buffer( uint32_t size )
 {
 	VkMemoryRequirements memory_requirements;
@@ -2672,6 +2681,7 @@ static void vk_create_storage_buffer( uint32_t size )
 	SET_OBJECT_NAME( vk.storage.descriptor, "storage buffer", VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT );
 	SET_OBJECT_NAME( vk.storage.memory, "storage buffer memory", VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT );
 }
+#endif
 
 
 #ifdef USE_VBO
@@ -3985,10 +3995,18 @@ void vk_initialize( void )
 	} else {
 		vk.fboActive = qfalse;
 	}
+#ifdef __XSDK__
+	vk.msaaActive = qfalse;
+#endif
 
 	// multisampling
 
+#ifdef __XSDK__
+	// vulkan4xenon leaves sampledImageDepthSampleCounts 0, which would make the screen map 0 samples.
+	vkMaxSamples = VK_SAMPLE_COUNT_1_BIT;
+#else
 	vkMaxSamples = MIN( props.limits.sampledImageColorSampleCounts, props.limits.sampledImageDepthSampleCounts );
+#endif
 
 	if ( /*vk.fboActive &&*/ vk.msaaActive ) {
 		VkSampleCountFlags mask = vkMaxSamples;
@@ -4221,7 +4239,12 @@ void vk_initialize( void )
 	// Descriptor pool.
 	//
 	{
+#ifdef __XSDK__
+		// vulkan4xenon refuses storage buffers (SUPPORT.md, Descriptor sets); fragmentStores is off, so no flare tests.
+		VkDescriptorPoolSize pool_size[2];
+#else
 		VkDescriptorPoolSize pool_size[3];
+#endif
 		VkDescriptorPoolCreateInfo desc;
 		uint32_t i, maxSets;
 
@@ -4234,8 +4257,10 @@ void vk_initialize( void )
 		//pool_size[2].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 		//pool_size[2].descriptorCount = NUM_COMMAND_BUFFERS;
 
+#ifndef __XSDK__
 		pool_size[2].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 		pool_size[2].descriptorCount = 1;
+#endif
 
 		for ( i = 0, maxSets = 0; i < ARRAY_LEN( pool_size ); i++ ) {
 			maxSets += pool_size[i].descriptorCount;
@@ -4256,7 +4281,9 @@ void vk_initialize( void )
 	//
 	vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_sampler );
 	vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_uniform );
+#ifndef __XSDK__
 	vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT, &vk.set_layout_storage );
+#endif
 	//vk_create_layout_binding( 0, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, VK_SHADER_STAGE_FRAGMENT_BIT, &vk.set_layout_input );
 
 	//
@@ -4288,6 +4315,7 @@ void vk_initialize( void )
 		VK_CHECK(qvkCreatePipelineLayout(vk.device, &desc, NULL, &vk.pipeline_layout));
 
 		// flare test pipeline
+#ifndef __XSDK__
 		set_layouts[0] = vk.set_layout_storage; // dynamic storage buffer
 
 		desc.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -4299,6 +4327,7 @@ void vk_initialize( void )
 		desc.pPushConstantRanges = &push_range;
 
 		VK_CHECK( qvkCreatePipelineLayout( vk.device, &desc, NULL, &vk.pipeline_layout_storage ) );
+#endif
 
 		// post-processing pipeline
 		set_layouts[0] = vk.set_layout_sampler; // sampler
@@ -4329,7 +4358,9 @@ void vk_initialize( void )
 	vk_create_geometry_buffers( vk.geometry_buffer_size_new );
 	vk.geometry_buffer_size_new = 0;
 
+#ifndef __XSDK__
 	vk_create_storage_buffer( MAX_FLARES * vk.storage_alignment );
+#endif
 
 	vk_create_shader_modules();
 
@@ -4561,10 +4592,14 @@ void vk_shutdown( refShutdownCode_t code )
 
 	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_sampler, NULL);
 	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_uniform, NULL);
+#ifndef __XSDK__
 	qvkDestroyDescriptorSetLayout(vk.device, vk.set_layout_storage, NULL);
+#endif
 
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout, NULL);
+#ifndef __XSDK__
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_storage, NULL);
+#endif
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_post_process, NULL);
 	qvkDestroyPipelineLayout(vk.device, vk.pipeline_layout_blend, NULL);
 
@@ -4580,8 +4615,10 @@ void vk_shutdown( refShutdownCode_t code )
 
 	vk_destroy_sync_primitives();
 
+#ifndef __XSDK__
 	qvkDestroyBuffer( vk.device, vk.storage.buffer, NULL );
 	qvkFreeMemory( vk.device, vk.storage.memory, NULL );
+#endif
 
 	for ( i = 0; i < 3; i++ ) {
 		for ( j = 0; j < 2; j++ ) {
