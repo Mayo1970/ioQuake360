@@ -290,6 +290,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #endif
 
+//================================================================= XSDK ===
+
+#ifdef __XSDK__
+
+#define OS_STRING "xbox360"
+#define ID_INLINE inline
+#define PATH_SEP '/'
+#define ARCH_STRING "xenon"
+#define Q3_BIG_ENDIAN
+#define DLL_EXT ".xex"
+
+#endif
+
 //===========================================================================
 
 //catch missing defines in above blocks

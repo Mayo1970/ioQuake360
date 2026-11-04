@@ -88,9 +88,139 @@ endif
 NATIVE_MODULE_OBJECTS :=
 NATIVE_MODULE_DEPS :=
 
-# Q3A and TA link qagame, cgame and ui natively; OA stays on QVMs until Q360-12.
-ifneq ($(OA),1)
+# Each flavor links qagame, cgame and ui natively.
 CFLAGS += -DQ360_NATIVE_MODULES
+
+ifeq ($(OA),1)
+QAGAME_SOURCES := \
+	code/oa/code/game/g_main.c \
+	code/oa/code/game/ai_chat.c \
+	code/oa/code/game/ai_cmd.c \
+	code/oa/code/game/ai_dmnet.c \
+	code/oa/code/game/ai_dmq3.c \
+	code/oa/code/game/ai_main.c \
+	code/oa/code/game/ai_team.c \
+	code/oa/code/game/ai_vcmd.c \
+	code/oa/code/game/bg_misc.c \
+	code/oa/code/game/bg_lib.c \
+	code/oa/code/game/bg_pmove.c \
+	code/oa/code/game/bg_slidemove.c \
+	code/oa/code/game/g_active.c \
+	code/oa/code/game/g_arenas.c \
+	code/oa/code/game/g_admin.c \
+	code/oa/code/game/g_bot.c \
+	code/oa/code/game/g_client.c \
+	code/oa/code/game/g_cmds.c \
+	code/oa/code/game/g_cmds_ext.c \
+	code/oa/code/game/g_combat.c \
+	code/oa/code/game/g_items.c \
+	code/oa/code/game/bg_alloc.c \
+	code/oa/code/game/g_fileops.c \
+	code/oa/code/game/g_killspree.c \
+	code/oa/code/game/g_misc.c \
+	code/oa/code/game/g_missile.c \
+	code/oa/code/game/g_mover.c \
+	code/oa/code/game/g_playerstore.c \
+	code/oa/code/game/g_session.c \
+	code/oa/code/game/g_spawn.c \
+	code/oa/code/game/g_svcmds.c \
+	code/oa/code/game/g_svcmds_ext.c \
+	code/oa/code/game/g_target.c \
+	code/oa/code/game/g_team.c \
+	code/oa/code/game/g_trigger.c \
+	code/oa/code/game/g_unlagged.c \
+	code/oa/code/game/g_utils.c \
+	code/oa/code/game/g_vote.c \
+	code/oa/code/game/g_weapon.c \
+	code/oa/code/qcommon/q_math.c \
+	code/oa/code/qcommon/q_shared.c \
+	code/oa/code/game/g_syscalls.c
+
+CGAME_SOURCES := \
+	code/oa/code/cgame/cg_main.c \
+	code/oa/code/game/bg_misc.c \
+	code/oa/code/game/bg_lib.c \
+	code/oa/code/game/bg_pmove.c \
+	code/oa/code/game/bg_slidemove.c \
+	code/oa/code/cgame/cg_challenges.c \
+	code/oa/code/cgame/cg_consolecmds.c \
+	code/oa/code/cgame/cg_draw.c \
+	code/oa/code/cgame/cg_drawtools.c \
+	code/oa/code/cgame/cg_effects.c \
+	code/oa/code/cgame/cg_ents.c \
+	code/oa/code/cgame/cg_event.c \
+	code/oa/code/cgame/cg_info.c \
+	code/oa/code/cgame/cg_localents.c \
+	code/oa/code/cgame/cg_marks.c \
+	code/oa/code/cgame/cg_players.c \
+	code/oa/code/cgame/cg_playerstate.c \
+	code/oa/code/cgame/cg_predict.c \
+	code/oa/code/cgame/cg_scoreboard.c \
+	code/oa/code/cgame/cg_servercmds.c \
+	code/oa/code/cgame/cg_snapshot.c \
+	code/oa/code/cgame/cg_unlagged.c \
+	code/oa/code/cgame/cg_view.c \
+	code/oa/code/cgame/cg_weapons.c \
+	code/oa/code/qcommon/q_math.c \
+	code/oa/code/qcommon/q_shared.c \
+	code/oa/code/cgame/cg_syscalls.c
+
+UI_SOURCES := \
+	code/oa/code/q3_ui/ui_main.c \
+	code/oa/code/game/bg_misc.c \
+	code/oa/code/game/bg_lib.c \
+	code/oa/code/q3_ui/ui_addbots.c \
+	code/oa/code/q3_ui/ui_atoms.c \
+	code/oa/code/q3_ui/ui_cdkey.c \
+	code/oa/code/q3_ui/ui_challenges.c \
+	code/oa/code/q3_ui/ui_cinematics.c \
+	code/oa/code/q3_ui/ui_confirm.c \
+	code/oa/code/q3_ui/ui_connect.c \
+	code/oa/code/q3_ui/ui_controls2.c \
+	code/oa/code/q3_ui/ui_credits.c \
+	code/oa/code/q3_ui/ui_demo2.c \
+	code/oa/code/q3_ui/ui_display.c \
+	code/oa/code/q3_ui/ui_firstconnect.c \
+	code/oa/code/q3_ui/ui_gameinfo.c \
+	code/oa/code/q3_ui/ui_ingame.c \
+	code/oa/code/q3_ui/ui_loadconfig.c \
+	code/oa/code/q3_ui/ui_menu.c \
+	code/oa/code/q3_ui/ui_mfield.c \
+	code/oa/code/q3_ui/ui_mods.c \
+	code/oa/code/q3_ui/ui_network.c \
+	code/oa/code/q3_ui/ui_options.c \
+	code/oa/code/q3_ui/ui_password.c \
+	code/oa/code/q3_ui/ui_playermodel.c \
+	code/oa/code/q3_ui/ui_players.c \
+	code/oa/code/q3_ui/ui_playersettings.c \
+	code/oa/code/q3_ui/ui_preferences.c \
+	code/oa/code/q3_ui/ui_qmenu.c \
+	code/oa/code/q3_ui/ui_removebots.c \
+	code/oa/code/q3_ui/ui_saveconfig.c \
+	code/oa/code/q3_ui/ui_serverinfo.c \
+	code/oa/code/q3_ui/ui_servers2.c \
+	code/oa/code/q3_ui/ui_setup.c \
+	code/oa/code/q3_ui/ui_sound.c \
+	code/oa/code/q3_ui/ui_sparena.c \
+	code/oa/code/q3_ui/ui_specifyserver.c \
+	code/oa/code/q3_ui/ui_splevel.c \
+	code/oa/code/q3_ui/ui_sppostgame.c \
+	code/oa/code/q3_ui/ui_spskill.c \
+	code/oa/code/q3_ui/ui_startserver.c \
+	code/oa/code/q3_ui/ui_team.c \
+	code/oa/code/q3_ui/ui_teamorders.c \
+	code/oa/code/q3_ui/ui_video.c \
+	code/oa/code/q3_ui/ui_votemenu.c \
+	code/oa/code/q3_ui/ui_votemenu_fraglimit.c \
+	code/oa/code/q3_ui/ui_votemenu_timelimit.c \
+	code/oa/code/q3_ui/ui_votemenu_gametype.c \
+	code/oa/code/q3_ui/ui_votemenu_kick.c \
+	code/oa/code/q3_ui/ui_votemenu_map.c \
+	code/oa/code/q3_ui/ui_votemenu_custom.c \
+	code/oa/code/qcommon/q_math.c \
+	code/oa/code/qcommon/q_shared.c \
+	code/oa/code/ui/ui_syscalls.c
+else
 
 QAGAME_SOURCES := \
 	code/game/g_main.c \
@@ -219,6 +349,7 @@ UI_SOURCES := \
 	code/qcommon/q_shared.c \
 	code/ui/ui_syscalls.c
 endif
+endif
 
 QAGAME_OBJECTS := $(patsubst %.c,$(BUILD)/qagame/%.o,$(QAGAME_SOURCES))
 CGAME_OBJECTS := $(patsubst %.c,$(BUILD)/cgame/%.o,$(CGAME_SOURCES))
@@ -230,7 +361,6 @@ UI_CFLAGS := $(CFLAGS) -DUI -fno-common -G 0
 NATIVE_MODULE_OBJECTS := $(BUILD)/qagame_native.o $(BUILD)/cgame_native.o $(BUILD)/ui_native.o
 NATIVE_MODULE_DEPS := $(QAGAME_OBJECTS:.o=.d) $(CGAME_OBJECTS:.o=.d) $(UI_OBJECTS:.o=.d)
 DEPS += $(NATIVE_MODULE_DEPS)
-endif
 LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
 LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
 
@@ -277,7 +407,6 @@ $(BUILD)/obj/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-ifneq ($(OA),1)
 $(BUILD)/qagame/%.o: %.c
 	mkdir -p $(@D)
 	$(CC) $(QAGAME_CFLAGS) -c $< -o $@
@@ -323,7 +452,6 @@ $(BUILD)/ui_native.o: $(UI_OBJECTS) code/sys/xenon_module.ld
 	$(TOOLCHAIN)objcopy -G ui_dllEntry -G ui_vmMain \
 		-G __ui_data_start -G __ui_data_end -G __ui_bss_start -G __ui_bss_end \
 		$(BUILD)/ui_renamed.o $@
-endif
 
 $(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(XSDK)/build/libxsdk.a $(XSDK)/src/xsdk.ld
 	mkdir -p $(@D)
