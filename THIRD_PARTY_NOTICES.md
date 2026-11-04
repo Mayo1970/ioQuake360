@@ -12,6 +12,8 @@ terms of the MIT and BSD licences below.
 | zlib 1.3.1 (Jean-loup Gailly and Mark Adler) | `code/thirdparty/zlib-1.3.1/` (vendored from ioq3 87a99d18) | zlib License | Yes |
 | Quake3e Vulkan renderer | `code/renderervk/` (vendored) | GPL-2.0 | Only with `RENDERER=vk` |
 | libjpeg 9f (Independent JPEG Group) | `code/thirdparty/jpeg-9f/` (vendored from ioq3 87a99d18) | IJG licence | Yes |
+| libogg 1.3.6 (Xiph.Org Foundation) | `code/thirdparty/libogg-1.3.6/` (vendored from ioq3 87a99d18) | BSD-3-Clause | Yes |
+| libvorbis 1.3.7 (Xiph.Org Foundation) | `code/thirdparty/libvorbis-1.3.7/` (vendored from ioq3 87a99d18) | BSD-3-Clause | Yes |
 | OpenArena game code, `oa-0.8.8` | `code/oa/` (vendored) | GPL-2.0 | Yes (Open Arena build) |
 | xsdk | `x360-sdk/` (submodule) | MIT, with BSD-3 parts | Yes (`libxsdk.a`) |
 | vulkan4xenon | `vulkan4xenon/` (submodule) | MIT | Yes (`libvulkan4xenon.a`, `RENDERER=vk`) |
@@ -38,6 +40,9 @@ headers. The Quake III Arena, Team Arena and OpenArena **game data** is not cove
   `code/client/cl_jpeg.c`, then adapted to ioq3's client and jpeg-9f. GPL-2.0.
 - libjpeg 9f: copied unchanged from ioq3 commit 87a99d18206e878a20289f05ac3c16005dcae5c3 at
   `code/thirdparty/jpeg-9f/`.
+- libogg 1.3.6 and libvorbis 1.3.7: copied unchanged from ioq3 commit 87a99d18206e878a20289f05ac3c16005dcae5c3 at
+  `code/thirdparty/libogg-1.3.6/` and `code/thirdparty/libvorbis-1.3.7/`. The build compiles the Ogg framing layer and
+  the PS3 port's Vorbis file list. BSD-3-Clause.
 - OpenArena gamecode: https://github.com/OpenArena/gamecode, branch oa-0.8.8, copied unchanged from the Ioquake3-PS3
   port's `code/oa/` to `code/oa/`. `code/q3_ui` and `code/ui` (absent from the PS3 copy) copied unchanged from
   branch oa-0.8.8, commit 1006052, to `code/oa/code/q3_ui/` and `code/oa/code/ui/`. GPL-2.0.
@@ -82,6 +87,43 @@ Binary distributions must include the acknowledgment: "this software is based in
 Group." Do not use an IJG author's or company's name to endorse derived products without prior written permission; refer
 to the software as IJG software. It is provided without warranty or liability, and these terms also apply to derived
 software. See the [IJG licence terms](https://jpegclub.org/reference/libjpeg-license/).
+
+## libogg and libvorbis
+
+libogg 1.3.6 and libvorbis 1.3.7 are copied unchanged from ioq3 commit 87a99d18206e878a20289f05ac3c16005dcae5c3 at
+`code/thirdparty/libogg-1.3.6/` and `code/thirdparty/libvorbis-1.3.7/`. Both use the same BSD-3-Clause terms.
+
+```
+libogg: Copyright (c) 2002, Xiph.org Foundation
+libvorbis: Copyright (c) 2002-2020 Xiph.org Foundation
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+- Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+
+- Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
+
+- Neither the name of the Xiph.org Foundation nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION
+OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
 
 ## xsdk
 
