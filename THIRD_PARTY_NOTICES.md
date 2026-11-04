@@ -9,6 +9,7 @@ terms of the MIT and BSD licences below.
 | Component | Where | Licence | Linked into the `.xex` |
 |---|---|---|---|
 | ioquake3 (id Software, ioquake3 contributors) | `code/` (vendored) | GPL-2.0 | Yes |
+| zlib 1.3.1 (Jean-loup Gailly and Mark Adler) | `code/thirdparty/zlib-1.3.1/` (vendored from ioq3 87a99d18) | zlib License | Yes |
 | Quake3e Vulkan renderer | `code/renderervk/` (vendored) | GPL-2.0 | Yes |
 | OpenArena game code, `oa-0.8.8` | `code/oa/` (vendored) | GPL-2.0 | Yes (Open Arena build) |
 | xsdk | `x360-sdk/` (submodule) | MIT, with BSD-3 parts | Yes (`libxsdk.a`) |
@@ -19,7 +20,7 @@ terms of the MIT and BSD licences below.
 | newlib | toolchain | `COPYING.NEWLIB` (permissive) | Yes |
 | GCC, binutils and the SDK's patches to them | `docker/xsdk-toolchain/` | GPL-3.0-or-later | No (build tools) |
 
-Libraries vendored later (for example zlib, libjpeg, libogg and libvorbis) add their section here in the same change
+Libraries vendored later (for example libjpeg, libogg and libvorbis) add their section here in the same change
 that vendors them.
 
 ## ioquake3, Quake3e and OpenArena
@@ -36,6 +37,34 @@ headers. The Quake III Arena, Team Arena and OpenArena **game data** is not cove
   unchanged to `code/renderervk/`; `code/renderercommon` copied unchanged to `code/renderervk/renderercommon/`. GPL-2.0.
 - OpenArena gamecode: https://github.com/OpenArena/gamecode, branch oa-0.8.8, copied unchanged from the Ioquake3-PS3
   port's `code/oa/` to `code/oa/`. GPL-2.0.
+
+## zlib
+
+zlib 1.3.1 is copied unchanged from ioq3 commit 87a99d18206e878a20289f05ac3c16005dcae5c3 at
+`code/thirdparty/zlib-1.3.1/`. The licence text is from `zlib.h`:
+
+```
+Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+Jean-loup Gailly        Mark Adler
+jloup@gzip.org          madler@alumni.caltech.edu
+```
 
 The Khronos Vulkan headers in `code/renderervk/renderercommon/vulkan/` are under Apache-2.0 (their SPDX line). Upstream
 stores them with CRLF line endings; this repo stores them with LF; the content is otherwise identical.
