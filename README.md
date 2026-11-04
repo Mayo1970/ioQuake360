@@ -3,8 +3,7 @@
 A port of [ioQuake3](https://github.com/ioquake/ioq3) to the Xbox 360, built on the
 open [xsdk](https://github.com/openpak/x360-sdk) homebrew SDK and
 [vulkan4xenon](https://github.com/xenosworks/vulkan4xenon), with
-[Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer. No Microsoft tooling
-and no leaked SDK material.
+[Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer.
 
 Three builds are produced from the same source tree. Each is a `.xex` for an
 RGH/JTAG console, with native `cgame`, `qagame` and `ui` (no QVM):
