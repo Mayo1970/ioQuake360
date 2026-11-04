@@ -489,6 +489,9 @@ static void vk_create_swapchain( VkPhysicalDevice physical_device, VkDevice devi
 	qboolean immediate_supported = qfalse;
 	qboolean fifo_relaxed_supported = qfalse;
 	int v;
+#ifdef __XSDK__
+	VkResult res;
+#endif
 
 	VK_CHECK( qvkGetPhysicalDeviceSurfaceCapabilitiesKHR( physical_device, surface, &surface_caps ) );
 
@@ -600,7 +603,18 @@ static void vk_create_swapchain( VkPhysicalDevice physical_device, VkDevice devi
 	desc.clipped = VK_TRUE;
 	desc.oldSwapchain = VK_NULL_HANDLE;
 
+	// Xenia has no display controller, so the smoke can still create pipelines without a swapchain.
+#ifdef __XSDK__
+	res = qvkCreateSwapchainKHR( device, &desc, NULL, swapchain );
+	if ( res != VK_SUCCESS ) {
+		ri.Printf( PRINT_WARNING, "Vulkan: vkCreateSwapchainKHR returned %s, continuing without a swapchain\n", vk_result_string( res ) );
+		*swapchain = VK_NULL_HANDLE;
+		vk.swapchain_image_count = 0;
+		return;
+	}
+#else
 	VK_CHECK( qvkCreateSwapchainKHR( device, &desc, NULL, swapchain ) );
+#endif
 
 	VK_CHECK( qvkGetSwapchainImagesKHR( vk.device, vk.swapchain, &vk.swapchain_image_count, NULL ) );
 	vk.swapchain_image_count = MIN( vk.swapchain_image_count, MAX_SWAPCHAIN_IMAGES );
@@ -6731,6 +6745,40 @@ VkPipeline vk_gen_pipeline( uint32_t index ) {
 		return VK_NULL_HANDLE;
 	}
 }
+
+
+#ifdef __XSDK__
+// Xenia smoke (Q360-18): no swapchain, so build every pipeline, log the count and quit.
+void vk_create_pipelines_without_swapchain( void )
+{
+	uint32_t i, created = 0, post = 0;
+
+	if ( vk.swapchain != VK_NULL_HANDLE ) {
+		return;
+	}
+
+	for ( i = 0; i < vk.pipelines_count; i++ ) {
+		vk_gen_pipeline( i );
+	}
+
+	for ( i = 0; i < vk.pipelines_count; i++ ) {
+		if ( vk.pipelines[i].handle[ RENDER_PASS_MAIN ] != VK_NULL_HANDLE ) {
+			created++;
+		}
+	}
+
+	post = ( vk.gamma_pipeline != VK_NULL_HANDLE ) + ( vk.capture_pipeline != VK_NULL_HANDLE )
+		+ ( vk.bloom_extract_pipeline != VK_NULL_HANDLE ) + ( vk.bloom_blend_pipeline != VK_NULL_HANDLE );
+	for ( i = 0; i < ARRAY_LEN( vk.blur_pipeline ); i++ ) {
+		if ( vk.blur_pipeline[i] != VK_NULL_HANDLE ) {
+			post++;
+		}
+	}
+
+	ri.Printf( PRINT_ALL, "Vulkan: no swapchain, %u of %u pipelines created, %u post-process; quitting\n", created, vk.pipelines_count, post );
+	ri.Cmd_ExecuteText( EXEC_INSERT, "quit\n" );
+}
+#endif
 
 
 uint32_t vk_find_pipeline_ext( uint32_t base, const Vk_Pipeline_Def *def, qboolean use ) {

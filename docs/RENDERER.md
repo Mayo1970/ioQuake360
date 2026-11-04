@@ -84,6 +84,7 @@ Each row cites the `vulkan4xenon/docs/SUPPORT.md` section. "No change" rows are 
 | FIFO only, 2 or 3 images, one acquired image, one swapchain, no `oldSwapchain` (Display and swapchain). | No change: the renderer picks FIFO and 3 images, presents before its next acquire, and destroys the swapchain before a restart with `oldSwapchain` `VK_NULL_HANDLE`. | - |
 | Linear tiling has no `BLIT_DST` (Formats). | No change: `vk_blit_enabled` is false and `capture_format` falls back to `color_format`. | - |
 | Xenia has no display controller, so `vkCreateSwapchainKHR` returns `VK_ERROR_INITIALIZATION_FAILED` (Display and swapchain). | Expected; no workaround. | - |
+| No display controller in Xenia: `vkCreateSwapchainKHR` fails in `xsdk_present_open` (Display and swapchain). | On `__XSDK__` a failed swapchain is logged and init goes on without one. `R_Init` then creates every pipeline, logs the count and inserts `quit`. With a swapchain nothing changes. | `code/renderervk/vk.c`, `code/renderervk/tr_init.c` |
 
 ## Shader pack
 

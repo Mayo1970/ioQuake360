@@ -1949,6 +1949,10 @@ void R_Init( void ) {
 		ri.Printf( PRINT_WARNING, "glGetError() = 0x%x\n", err );
 #endif
 
+#ifdef __XSDK__
+	vk_create_pipelines_without_swapchain();
+#endif
+
 	ri.Printf( PRINT_ALL, "----- finished R_Init -----\n" );
 }
 
