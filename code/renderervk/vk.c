@@ -4131,7 +4131,7 @@ void vk_initialize( void )
 			ri.Printf( PRINT_ALL, "...device memory size: %iMB\n", (int)((maxDedicatedSize + (1024 * 1024) - 1) / (1024 * 1024)) );
 		}
 		if ( maxBARSize != 0 ) {
-			// vulkan4xenon's one 256 MB heap is host-visible; the PC BAR sizes would take 40 MB of it.
+			// On __XSDK__ the one 256 MB heap is host-visible; the PC BAR sizes would take 40 MB of it.
 #ifndef __XSDK__
 			if ( maxBARSize >= 128 * 1024 * 1024 ) {
 				// user larger buffers to avoid potential reallocations
@@ -4838,8 +4838,8 @@ void vk_release_resources( void ) {
 
 	VK_CHECK( qvkResetDescriptorPool( vk.device, vk.descriptor_pool, 0 ) );
 
+	// On __XSDK__ 64 MB chunks can leave up to 64 MB of the 256 MB heap unused; keep 32 MB.
 #ifndef __XSDK__
-	// 64 MB chunks can leave up to 64 MB of the 256 MB heap unused; keep 32 MB.
 	if ( vk_world.num_image_chunks > 1 ) {
 		// if we allocated more than 2 image chunks - use doubled default size
 		vk.image_chunk_size = (IMAGE_CHUNK_SIZE * 2);
