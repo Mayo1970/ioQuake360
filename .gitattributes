@@ -1,0 +1,7 @@
+# Scripts and patches run inside the Linux container; CRLF breaks bash and patch.
+*.sh text eol=lf
+*.patch text eol=lf
+*.py text eol=lf
+Dockerfile text eol=lf
+Makefile text eol=lf
+*.mk text eol=lf

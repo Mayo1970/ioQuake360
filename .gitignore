@@ -1,0 +1,75 @@
+# Build artifacts
+*.d
+*.o
+*.obj
+*.a
+*.la
+*.lo
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+*.out
+*.elf
+*.elf32
+*.map
+*.gch
+*.pch
+*.su
+*.dwo
+*.pdb
+*.ilk
+
+# Xbox 360 build outputs
+*.xex
+build/
+build_ta/
+build_oa/
+build_*/
+dist/
+build_log*.txt
+
+# Toolchain sources (build.sh downloads and checks them); .gitkeep lets the Dockerfile COPY src/
+docker/xsdk-toolchain/src/*
+!docker/xsdk-toolchain/src/.gitkeep
+
+# Game data (user-provided; never commit)
+*.pk3
+*.pk3dir/
+/baseq3/
+/missionpack/
+/baseoa/
+q3key
+qkey
+*config.cfg
+
+# Console and emulator logs, captures
+*.log
+results/
+xenia*/
+cache/
+
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Local planning (sprint plan and board stay off the repo)
+plan/
+
+# AI assistant / editor cruft
+.claude/
+.codex/
+.cursor/
+.aider*
+CLAUDE.md
+AGENTS.md
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
