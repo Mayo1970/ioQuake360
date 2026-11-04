@@ -61,6 +61,9 @@ char *Sys_StripAppBundle( char *pwd );
 void Sys_GLimpSafeInit( void );
 void Sys_GLimpInit( void );
 void Sys_PlatformInit( void );
+#ifdef X360_DEBUG
+void Sys_LogFreeMemory( const char *when );
+#endif
 void Sys_PlatformExit( void );
 void Sys_SigHandler( int signal ) Q_NO_RETURN;
 void Sys_ErrorDialog( const char *error );

@@ -22,6 +22,9 @@ int main(void)
 		Q_strcat(cmdline, sizeof(cmdline), Q360_ARGS);
 	}
 	Com_Init(cmdline);
+#ifdef X360_DEBUG
+	Sys_LogFreeMemory( "after Com_Init" );
+#endif
 	NET_Init();
 
 	while (1)

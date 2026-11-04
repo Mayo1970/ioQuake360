@@ -6,6 +6,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <malloc.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -528,8 +529,37 @@ void Sys_SetEnv( const char *name, const char *value )
 		unsetenv( name );
 }
 
+#ifdef X360_DEBUG
+void Sys_LogFreeMemory( const char *when )
+{
+	MM_QUERY_STATISTICS_RESULT result = { .size = sizeof( result ) };
+	NTSTATUS status = MmQueryStatistics( &result );
+	uint32_t title_total_pages;
+	unsigned heap_kb;
+
+	if( !NT_SUCCESS( status ) )
+	{
+		xsdk_log_write( "[mem] %s: MmQueryStatistics failed: 0x%08X", when, (unsigned)status );
+		return;
+	}
+
+	title_total_pages = result.title.available_pages + result.title.physical_pages + result.title.pool_pages +
+		result.title.stack_pages + result.title.image_pages + result.title.heap_pages + result.title.virtual_pages +
+		result.title.page_table_pages + result.title.cache_pages;
+	heap_kb = (unsigned)( mallinfo().uordblks / 1024 );
+
+	xsdk_log_write( "[mem] %s: title free %u MB (%u pages), title total %u MB, newlib heap in use %u KB",
+		when, (unsigned)( result.title.available_pages * 4096U / ( 1024U * 1024U ) ),
+		(unsigned)result.title.available_pages, (unsigned)( title_total_pages * 4096U / ( 1024U * 1024U ) ),
+		heap_kb );
+}
+#endif
+
 void Sys_PlatformInit( void )
 {
+#ifdef X360_DEBUG
+	Sys_LogFreeMemory( "Sys_PlatformInit" );
+#endif
 }
 
 void Sys_PlatformExit( void )
