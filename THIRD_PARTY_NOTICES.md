@@ -14,6 +14,7 @@ terms of the MIT and BSD licences below.
 | xsdk | `x360-sdk/` (submodule) | MIT, with BSD-3 parts | Yes (`libxsdk.a`) |
 | vulkan4xenon | `vulkan4xenon/` (submodule) | MIT | Yes (`libvulkan4xenon.a`) |
 | Khronos Vulkan headers | `vulkan4xenon/third_party/vulkan-headers/` | Apache-2.0 or MIT | Headers only |
+| Khronos Vulkan headers | `code/renderervk/renderercommon/vulkan/` | Apache-2.0 | Headers only |
 | GCC runtime (libgcc, libstdc++) | toolchain | GPL-3.0 with the GCC Runtime Library Exception | Yes |
 | newlib | toolchain | `COPYING.NEWLIB` (permissive) | Yes |
 | GCC, binutils and the SDK's patches to them | `docker/xsdk-toolchain/` | GPL-3.0-or-later | No (build tools) |
@@ -26,6 +27,18 @@ that vendors them.
 Quake III Arena's source code was released by id Software under the GPL, version 2. ioquake3, Quake3e and the
 OpenArena game code carry that licence; the full text is in `LICENSE`. Their source files keep their own copyright
 headers. The Quake III Arena, Team Arena and OpenArena **game data** is not covered and is not included.
+
+## Vendored sources
+
+- ioquake3: https://github.com/ioquake/ioq3, commit 87a99d18206e878a20289f05ac3c16005dcae5c3. Copied unchanged to
+  `code/`: botlib, cgame, client, game, null, q3_ui, qcommon, renderercommon, server, sys, ui. GPL-2.0.
+- Quake3e: https://github.com/ec-/Quake3e, commit 3173cef096dd0cb2fea26d91bce71049061f5a13. `code/renderervk` copied
+  unchanged to `code/renderervk/`; `code/renderercommon` copied unchanged to `code/renderervk/renderercommon/`. GPL-2.0.
+- OpenArena gamecode: https://github.com/OpenArena/gamecode, branch oa-0.8.8, copied unchanged from the Ioquake3-PS3
+  port's `code/oa/` to `code/oa/`. GPL-2.0.
+
+The Khronos Vulkan headers in `code/renderervk/renderercommon/vulkan/` are under Apache-2.0 (their SPDX line). Upstream
+stores them with CRLF line endings; this repo stores them with LF; the content is otherwise identical.
 
 ## xsdk
 
