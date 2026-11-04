@@ -612,6 +612,14 @@ Key_KeynumToStringBuf
 ====================
 */
 static void Key_KeynumToStringBuf( int keynum, char *buf, int buflen ) {
+#ifdef __XSDK__
+	static const char *padNames[] = { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "LS", "RS", "BACK" };
+
+	if ( keynum >= K_JOY1 && keynum <= K_JOY11 ) {
+		Q_strncpyz( buf, padNames[keynum - K_JOY1], buflen );
+		return;
+	}
+#endif
 	Q_strncpyz( buf, Key_KeynumToString( keynum ), buflen );
 }
 

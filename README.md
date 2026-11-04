@@ -181,8 +181,9 @@ place them.
 
 ## Controls (Xbox 360 controller)
 
-Planned layout: the PS3 port's dual-stick layout on the 360 pad. Buttons are
-rebindable from the in-game menu.
+Layout: the PS3 port's dual-stick layout on the 360 pad. Buttons are
+rebindable from the in-game menu. Bind screens show A, B, X, Y, LB, RB, LT, RT,
+LS, RS and BACK; configs store them as `PAD_A` ... `PAD_BACK`.
 
 ### In-game
 
@@ -204,8 +205,8 @@ rebindable from the in-game menu.
 | **Start** | Menu (Escape) |
 | **Back + A** | Open chat |
 | **Back + Y** | Toggle console |
-| **Back + Start** | Quit to dashboard |
-| **LS + RS** | Toggle rumble on/off |
+| **Back + Start** | Quit to dashboard (coming later) |
+| **LS + RS** | Toggle rumble on/off (coming later) |
 
 ### Rumble
 

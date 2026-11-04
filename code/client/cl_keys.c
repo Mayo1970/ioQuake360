@@ -106,6 +106,21 @@ keyname_t keynames[] =
 	{"MWHEELUP",	K_MWHEELUP },
 	{"MWHEELDOWN",	K_MWHEELDOWN },
 
+#ifdef __XSDK__
+	// Xbox 360 pad names, first so Key_KeynumToString returns them; single letters would parse as keys.
+	{"PAD_A",    K_JOY1},
+	{"PAD_B",    K_JOY2},
+	{"PAD_X",    K_JOY3},
+	{"PAD_Y",    K_JOY4},
+	{"PAD_LB",   K_JOY5},
+	{"PAD_RB",   K_JOY6},
+	{"PAD_LT",   K_JOY7},
+	{"PAD_RT",   K_JOY8},
+	{"PAD_LS",   K_JOY9},
+	{"PAD_RS",   K_JOY10},
+	{"PAD_BACK", K_JOY11},
+#endif
+
 	{"JOY1", K_JOY1},
 	{"JOY2", K_JOY2},
 	{"JOY3", K_JOY3},

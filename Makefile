@@ -71,7 +71,7 @@ ENGINE_SOURCES := \
 	code/client/snd_codec.c \
 	code/client/snd_codec_wav.c \
 	code/client/snd_openal.c \
-	code/null/null_input.c \
+	code/sys/xenon_input.c \
 	code/sys/sys_xenon.c \
 	code/sys/xenon_main.c \
 	code/sys/xenon_vk.c \
