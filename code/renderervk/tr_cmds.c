@@ -86,13 +86,13 @@ static void R_IssueRenderCommands( void ) {
 	cmdList->used = 0;
 
 	if ( backEnd.screenshotMask == 0 ) {
-		if ( ri.CL_IsMinimized() )
+		if ( TR_CL_IsMinimized() )
 			return; // skip backend when minimized
 		if ( backEnd.throttle )
 			return; // or throttled on demand
 	} else {
 #ifdef USE_VULKAN
-		if ( ri.CL_IsMinimized() && !RE_CanMinimize() ) {
+		if ( TR_CL_IsMinimized() && !RE_CanMinimize() ) {
 			backEnd.screenshotMask = 0;
 			return;
 		}
@@ -398,7 +398,7 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 	backEnd.throttle = qfalse;
 
 	// recompile GPU shaders if needed
-	if ( ri.Cvar_CheckGroup( CVG_RENDERER ) ) {
+	if ( TR_CvarCheckGroup( CVG_RENDERER ) ) {
 
 		// texturemode stuff
 		if ( r_textureMode->modified ) {
@@ -414,7 +414,7 @@ void RE_EndFrame( int *frontEndMsec, int *backEndMsec ) {
 		vk_update_post_process_pipelines();
 #endif
 
-		ri.Cvar_ResetGroup( CVG_RENDERER, qtrue /* reset modified flags */ );
+		TR_CvarResetGroup( CVG_RENDERER, qtrue /* reset modified flags */ );
 	}
 }
 

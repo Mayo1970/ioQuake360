@@ -32,14 +32,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  * You may also wish to include "jerror.h".
  */
 
-#ifdef USE_SYSTEM_JPEG
-#	include <jpeglib.h>
-#	if JPEG_LIB_VERSION < 80 && !defined(MEM_SRCDST_SUPPORTED)
-#		error Need system libjpeg >= 80 or jpeg_mem_ support
-#	endif
+#ifdef USE_INTERNAL_JPEG
+#	include "../thirdparty/jpeg-9f/jpeglib.h"
 #else
-#	define JPEG_INTERNALS
-#	include "../libjpeg/jpeglib.h"
+#	include <jpeglib.h>
 #endif
 
 /* Catching errors, as done in libjpeg's example.c */
@@ -63,7 +59,7 @@ static void CL_JPGErrorExit(j_common_ptr cinfo)
 	Com_Printf( "Error: %s", buffer );
   
 	/* Return control to the setjmp point */
-	Q_longjmp( jerr->setjmp_buffer, 1 );
+	longjmp( jerr->setjmp_buffer, 1 );
 }
 
 
@@ -104,7 +100,7 @@ void CL_LoadJPG( const char *filename, unsigned char **pic, int *width, int *hei
 	unsigned int pixelcount, memcount;
 	unsigned int sindex, dindex;
 	byte *out;
-	int len;
+	long len;
 	union {
 		byte *b;
 		void *v;
@@ -117,7 +113,7 @@ void CL_LoadJPG( const char *filename, unsigned char **pic, int *width, int *hei
 	 * requires it in order to read binary files.
 	*/
 
-	len = FS_ReadFile( ( char * ) filename, &fbuffer.v );
+	len = FS_ReadFile( filename, &fbuffer.v );
 	if ( !fbuffer.b || len < 0 ) {
 		return;
 	}
@@ -134,7 +130,7 @@ void CL_LoadJPG( const char *filename, unsigned char **pic, int *width, int *hei
 	cinfo.err->output_message = CL_JPGOutputMessage;
 
 	/* Establish the setjmp return context for R_JPGErrorExit to use. */
-	if ( Q_setjmp( jerr.setjmp_buffer ) )
+	if ( setjmp( jerr.setjmp_buffer ) )
 	{
 		/* If we get here, the JPEG code has signaled an error.
 		* We need to clean up the JPEG object, close the input file, and return.
@@ -399,7 +395,7 @@ size_t CL_SaveJPGToBuffer(byte *buffer, size_t bufSize, int quality,
   cinfo.err->output_message = CL_JPGOutputMessage;
 
   /* Establish the setjmp return context for R_JPGErrorExit to use. */
-  if ( Q_setjmp( jerr.setjmp_buffer ) )
+  if ( setjmp( jerr.setjmp_buffer ) )
   {
     /* If we get here, the JPEG code has signaled an error.
      * We need to clean up the JPEG object and return.
@@ -468,10 +464,10 @@ void CL_SaveJPG( const char *filename, int quality, int image_width, int image_h
 	size_t bufSize;
 
 	bufSize = image_width * image_height * 4;
-	out = Hunk_AllocateTempMemory(bufSize);
+	out = Hunk_AllocateTempMemory( (int)bufSize );
 
 	bufSize = CL_SaveJPGToBuffer( out, bufSize, quality, image_width, image_height, image_buffer, padding );
-	FS_WriteFile( filename, out, bufSize );
+	FS_WriteFile( filename, out, (int)bufSize );
 
 	Hunk_FreeTempMemory(out);
 }

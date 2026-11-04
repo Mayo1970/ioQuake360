@@ -1,9 +1,10 @@
 # ioQuake360
 
 A port of [ioQuake3](https://github.com/ioquake/ioq3) to the Xbox 360, built on the
-open [xsdk](https://github.com/openpak/x360-sdk) homebrew SDK and
-[vulkan4xenon](https://github.com/xenosworks/vulkan4xenon), with
-[Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer.
+open [xsdk](https://github.com/openpak/x360-sdk) homebrew SDK. The default build
+uses the null renderer; `RENDERER=vk` statically links
+[Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer and uses
+[vulkan4xenon](https://github.com/xenosworks/vulkan4xenon)'s Vulkan headers.
 
 Three builds are produced from the same source tree. Each is a `.xex` for an
 RGH/JTAG console, with native `cgame` and `qagame`. Open Arena also has a
@@ -109,6 +110,7 @@ make clean    # wipe all build dirs (build/, build_ta/, build_oa/)
 | Flag | Effect |
 |---|---|
 | `DEBUG=1` | Adds `-DX360_DEBUG -g`; writes `log[_ta\|_oa].txt` next to the `.xex`. Release builds emit no log file. |
+| `RENDERER=vk` | Links Quake3e's Vulkan renderer. The default is `RENDERER=null`. |
 
 ### Outputs
 
@@ -118,7 +120,8 @@ make clean    # wipe all build dirs (build/, build_ta/, build_oa/)
 | Team Arena | `build_ta/ioquake360_ta.xex` |
 | Open Arena | `build_oa/ioquake360_oa.xex` |
 
-Always run `make clean` before rebuilding after a flag change.
+Run `make clean` after changing compiler flags. Switching `RENDERER` relinks
+with the selected renderer while reusing the shared engine objects.
 
 ### Compiler flags (under the hood)
 

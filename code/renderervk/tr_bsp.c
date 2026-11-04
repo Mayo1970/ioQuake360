@@ -704,7 +704,7 @@ static void ParseFace( const dsurface_t *ds, const drawVert_t *verts, int numPoi
 			cv->points[i][3+j] = LittleFloat( verts[i].st[j] );
 			cv->points[i][5+j] = LittleFloat( verts[i].lightmap[j] );
 		}
-		R_ColorShiftLightingBytes( verts[i].color.rgba, (byte *)&cv->points[i][7], qtrue );
+		R_ColorShiftLightingBytes( verts[i].color, (byte *)&cv->points[i][7], qtrue );
 		if ( lightmapNum >= 0 && tr.mergeLightmaps ) {
 			// adjust lightmap coords
 			cv->points[i][5] = cv->points[i][5] * tr.lightmapScale[0] + lightmapX;
@@ -823,7 +823,7 @@ static void ParseMesh( const dsurface_t *ds, const drawVert_t *verts, int numVer
 			points[i].st[j] = LittleFloat( verts[i].st[j] );
 			points[i].lightmap[j] = LittleFloat( verts[i].lightmap[j] );
 		}
-		R_ColorShiftLightingBytes( verts[i].color.rgba, points[i].color.rgba, qtrue );
+		R_ColorShiftLightingBytes( verts[i].color, points[i].color, qtrue );
 		if ( lightmapNum >= 0 && tr.mergeLightmaps ) {
 			// adjust lightmap coords
 			points[i].lightmap[0] = points[i].lightmap[0] * tr.lightmapScale[0] + lightmapX;
@@ -896,7 +896,7 @@ static void ParseTriSurf( const dsurface_t *ds, const drawVert_t *verts, int num
 			tri->verts[i].lightmap[j] = LittleFloat( verts[i].lightmap[j] );
 		}
 
-		R_ColorShiftLightingBytes( verts[i].color.rgba, tri->verts[i].color.rgba, qtrue );
+		R_ColorShiftLightingBytes( verts[i].color, tri->verts[i].color, qtrue );
 		if ( lightmapNum >= 0 && tr.mergeLightmaps ) {
 			// adjust lightmap coords
 			tri->verts[i].lightmap[0] = tri->verts[i].lightmap[0] * tr.lightmapScale[0] + lightmapX;
@@ -2392,11 +2392,7 @@ void RE_LoadWorldMap( const char *name ) {
 	tr.worldMapLoaded = qtrue;
 
  	// try to get from cache first
-	size = ri.Hunk_GetTempMemory( &buffer.v );
-	if ( size == 0 ) {
-		// load it
-		size = ri.FS_ReadFile( name, &buffer.v );
-	}
+	size = ri.FS_ReadFile( name, &buffer.v );
 	if ( !buffer.b ) {
 		ri.Error( ERR_DROP, "%s: couldn't load %s", __func__, name );
 	}

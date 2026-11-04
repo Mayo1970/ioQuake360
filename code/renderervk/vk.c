@@ -7379,7 +7379,7 @@ void vk_begin_frame( void )
 		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
 	}
 
-	if ( !ri.CL_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
+	if ( !TR_CL_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
 		qboolean retry = qfalse;
 _retry:
 		res = qvkAcquireNextImageKHR( vk.device, vk.swapchain, 1 * 1000000000ULL, vk.cmd->image_acquired, VK_NULL_HANDLE, &vk.cmd->swapchain_image_index );
@@ -7533,7 +7533,7 @@ void vk_end_frame( void )
 			qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		}
 
-		if ( !ri.CL_IsMinimized() )
+		if ( !TR_CL_IsMinimized() )
 		{
 			vk_end_render_pass();
 
@@ -7559,7 +7559,7 @@ void vk_end_frame( void )
 	submit_info.pNext = NULL;
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &vk.cmd->command_buffer;
-	if ( !ri.CL_IsMinimized() ) {
+	if ( !TR_CL_IsMinimized() ) {
 #ifdef USE_UPLOAD_QUEUE
 		if ( vk.image_uploaded != VK_NULL_HANDLE ) {
 			waits[0] = vk.cmd->image_acquired;
@@ -7623,7 +7623,7 @@ void vk_present_frame( void )
 	VkPresentInfoKHR present_info;
 	VkResult res;
 
-	if ( ri.CL_IsMinimized() || !vk.cmd->swapchain_image_acquired ) {
+	if ( TR_CL_IsMinimized() || !vk.cmd->swapchain_image_acquired ) {
 		return;
 	}
 
