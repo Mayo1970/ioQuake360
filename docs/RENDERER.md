@@ -106,3 +106,26 @@ Each row cites the `vulkan4xenon/docs/SUPPORT.md` section. "No change" rows are 
 |---|---|---|
 | Quake3e's JPEG code targets a different client and bundled libjpeg; ioq3 already vendors jpeg-9f. | Adapt `cl_jpeg.c` to ioq3 filesystem and hunk calls, include jpeg-9f, and use `USE_INTERNAL_JPEG`. Build `cl_jpeg.c` and jpeg-9f in both renderer modes; suppress warnings only on jpeg-9f objects. | `code/client/cl_jpeg.c`, `code/thirdparty/jpeg-9f/`, `Makefile` |
 | The Quake3e JPEG image loader expects `CL_LoadJPG` through `refimport_t`. | Append and assign all three Quake3e JPEG callbacks under `__XSDK__`. | `code/renderervk/renderercommon/tr_image_jpg.c`, `code/renderercommon/tr_public.h`, `code/client/cl_main.c` |
+
+## Xbox 360 defaults
+
+| Cvar | Default on `__XSDK__` | Reason | Files |
+|---|---|---|---|
+| Display size | 1280x720, full screen | `VKimp_Init` fixes 1280x720 at 16:9, full screen; `r_renderWidth` and `r_renderHeight` default to 1280x720 so `r_renderScale` keeps 720p. | `code/sys/xenon_vk.c`, `code/renderervk/tr_init.c` |
+| `r_ext_multisample` | 0, forced | Images have one sample. Q360-38 revisits MSAA. | `code/renderervk/tr_init.c` |
+| `r_ext_supersample` | 0, forced | Doubles the render targets. | `code/renderervk/tr_init.c` |
+| `r_bloom` | 0 | Upstream default. The player can enable it; the bloom shaders are in the pack. | `code/renderervk/tr_init.c` |
+| `r_hdr` | 0 | Already falls back to the base format (see the vulkan4xenon table). | `code/renderervk/vk.c` |
+| `r_picmip` | 0 | Upstream Quake3e default: full-size textures fit the 256 MB heap. | `code/renderervk/tr_init.c` |
+| `r_textureMode` and `r_ext_max_anisotropy` | GL_LINEAR_MIPMAP_NEAREST, 8 | Upstream defaults; vulkan4xenon supports anisotropy 1 to 16. | `code/renderervk/tr_init.c` |
+| `r_gamma`, `r_overBrightBits`, `r_mapOverBrightBits` | 1, 1, 2 | Upstream: `deviceSupportsGamma` is false, so gamma and overbright apply in the final `r_fbo` pass. | `code/renderervk/tr_init.c`, `code/renderervk/tr_image.c` |
+| `r_swapInterval` | 1, registered on `__XSDK__` | FIFO is the only present mode. | `code/renderervk/tr_init.c` |
+| GPU memory | Vertex 4 MB, staging 2 MB, image chunks 32 MB | Vertex and staging buffers grow on demand; image chunks stay 32 MB. | `code/renderervk/vk.c` |
+
+2D paths use the world's pipelines:
+
+| Path | Route | Files |
+|---|---|---|
+| Console, fonts, 2D menus | `re.DrawStretchPic` -> `RE_StretchPic` -> `RB_StretchPic`, drawn through the tess buffer and the same pipelines as world shaders. | `code/renderervk/tr_cmds.c`, `code/renderervk/tr_backend.c` |
+| Font data | `tr_font.c` `readInt` builds ints byte by byte and `readFloat` swaps on `Q3_BIG_ENDIAN`. | `code/renderervk/renderercommon/tr_font.c` |
+| RoQ cinematics | `cl_cin.c` writes pixels with `LittleLong` (RGBA byte order on big endian); `RE_StretchRaw` -> `RE_UploadCinematic` uploads to the scratch image through `vk_upload_image_data`, then `RE_StretchPic` with `tr.cinematicShader`. | `code/client/cl_cin.c`, `code/renderervk/tr_backend.c` |
