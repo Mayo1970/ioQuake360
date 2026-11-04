@@ -12,6 +12,7 @@ ARGS ?=
 RENDERER ?= null
 XSDK_PATCH := patches/x360-sdk/0001-specialization-constants.patch
 VULKAN4XENON_PATCH := patches/vulkan4xenon/0001-specialization-constants.patch
+VK_SHADER_BUNDLE := code/renderervk/shaders/xenon/vk_shader_bundle
 
 ZLIB_DIR := code/thirdparty/zlib-1.3.1
 ZLIB_SOURCES := $(wildcard $(ZLIB_DIR)/*.c)
@@ -381,6 +382,10 @@ vulkan4xenon-patches:
 
 xost: $(XSDK)/build/host/libxsc.so
 
+# The committed shader pack vk.c includes on __XSDK__, regenerated after a shader or xost changes.
+shaders: $(XSDK)/build/host/libxsc.so
+	$(PYTHON) tools/build_vk_shaders.py --xost $(XSDK)/xenos-toolchain --output $(VK_SHADER_BUNDLE)
+
 $(XSDK)/build/host/libxsc.so: FORCE xsdk-patches
 	$(MAKE) -C $(XSDK) HOST_CC=gcc build/host/libxsc.so
 
@@ -403,6 +408,7 @@ $(BUILD)/obj/code/sys/xenon_main.o: $(ARGS_STAMP)
 $(BUILD)/obj/code/sys/xenon_vk.o: $(BUILD)/renderer.stamp
 ifeq ($(RENDERER),vk)
 $(BUILD)/obj/code/sys/xenon_vk.o: CFLAGS += -DQ360_RENDERER_VK
+$(BUILD)/obj/code/renderervk/vk.o: CFLAGS += -Ivulkan4xenon/include
 endif
 
 $(BUILD)/obj/%.o: %.c
@@ -465,4 +471,4 @@ $(BUILD)/$(TARGET).xex: $(BUILD)/$(TARGET).elf $(XSDK)/tools/elf2xex.py
 -include $(DEPS)
 endif
 
-.PHONY: all ta oa all-flavors clean FORCE xsdk-patches vulkan4xenon-patches xost
+.PHONY: all ta oa all-flavors clean FORCE xsdk-patches vulkan4xenon-patches xost shaders

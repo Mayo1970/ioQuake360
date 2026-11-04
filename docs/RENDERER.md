@@ -85,6 +85,21 @@ Each row cites the `vulkan4xenon/docs/SUPPORT.md` section. "No change" rows are 
 | Linear tiling has no `BLIT_DST` (Formats). | No change: `vk_blit_enabled` is false and `capture_format` falls back to `color_format`. | - |
 | Xenia has no display controller, so `vkCreateSwapchainKHR` returns `VK_ERROR_INITIALIZATION_FAILED` (Display and swapchain). | Expected; no workaround. | - |
 
+## Shader pack
+
+`make shaders` builds `code/renderervk/shaders/xenon/vk_shader_bundle.c` and `.h`, which are committed. `tools/build_vk_shaders.py` takes every variant `compile.bat` makes and adds `Q360_XENOS`. glslang compiles each one, and xost turns it into a Xenos container through `vulkan4xenon/tools/build_shaders.py`. Vertex shaders also get an instanced variant. On `__XSDK__`, `vk.c` includes the bundle and passes its SPIR-V to `vkCreateShaderModule`. The layer then finds the container by hash, so the console compiles no shader. The script stops if xost refuses any variant. 113 shaders build, and none of them exceeds the 64-register share.
+
+| Difference | Resolution | Files |
+|---|---|---|
+| vulkan4xenon and xost had no specialization constants, and renderervk relies on them. | `patches/x360-sdk` and `patches/vulkan4xenon` add them. Each scalar constant gets a float constant register, and the layer writes the value from `VkSpecializationInfo` when it binds the pipeline. xost lowers `OpSpecConstantOp` (logical ops, `Select`, int comparisons) and `OpSpecConstantComposite`. It also lowers int comparisons. A fragment input at a skipped location still takes its interpolator. The Makefile applies the patches with `patch(1)` before the SDK builds. | `patches/`, `Makefile` |
+| xost takes a pixel shader's if/else only when each arm stores one local or the output, merges one if/else local in each shader, and takes no discard-only arm or partial store. | `Q360_XENOS` bodies: the texture modes work out their samples first, and each arm stores `base`. Alpha-test and discard modes become one summed discard. Fog `acff`, `abs_light`, bloom extract and gamma become weights. Upstream code stays under `#else`. | `shaders/gen_frag.tmpl`, `light_frag.tmpl`, `bloom.frag`, `gamma.frag` |
+| An env vertex shader stores `frag_tex_coord0` in parts. | It stores the whole vector, the same value. | `shaders/gen_vert.tmpl` |
+| The pixel parameters hold no depth, so `gl_FragCoord.z` is refused. | The `df` variant writes colour and no depth, and its pipeline masks colour. | `shaders/gen_frag.tmpl` |
+| `gl_VertexIndex` is refused, and `gamma.vert` builds the post-process quad from it. | A 4-vertex quad buffer, bound before each post-process draw. The post-process pipelines read it at locations 0 and 2. | `shaders/gamma.vert`, `code/renderervk/vk.c`, `vk.h` |
+| `dot.frag` (flare test) writes a storage buffer. | The pack leaves out the dot shaders, and `vk.c` does not create their modules. The dot pipeline was already never made (`fragmentStores` false). | `tools/build_vk_shaders.py`, `code/renderervk/vk.c` |
+| `gamma.frag` dither reads `gl_FragCoord` as ints. | The Xenos body has no dither, so `r_dither` has no effect. | `shaders/gamma.frag` |
+| glslang was not in the toolchain image. | Debian's `glslang-tools` is added in its own layer after the toolchain. | `docker/xsdk-toolchain/Dockerfile` |
+
 ## JPEG
 
 | Difference | Resolution | Files |

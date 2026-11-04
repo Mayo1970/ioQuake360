@@ -16,6 +16,20 @@ layout(constant_id = 6) const int base_modulate = 0;
 
 //const vec3 sRGB = { 0.2126, 0.7152, 0.0722 };
 
+#ifdef Q360_XENOS
+// Q360: the extract modes as weights rather than nested if/else, which xost doesn't merge into the output.
+void main() {
+	vec3 base = texture(texture0, frag_tex_coord).rgb;
+	const vec3 luma = { 0.2126, 0.7152, 0.0722 };
+	float v = dot( luma, base.rgb );
+	float mode1 = float( extract_mode == 1 );
+	float mode2 = float( extract_mode == 2 );
+	float level = mode1 * ( (base.r + base.g + base.b) * 0.33333333 ) + mode2 * v
+		+ (1.0 - mode1 - mode2) * max( max( base.r, base.g ), base.b );
+	vec3 modulated = mix( base, mix( base * base, base * v, float( base_modulate != 1 ) ), float( base_modulate != 0 ) );
+	out_color = mix( vec4( 0.0 ), vec4( modulated, 1.0 ), float( level >= threshold ) );
+}
+#else
 void main() {
 	vec3 base = texture(texture0, frag_tex_coord).rgb;
 
@@ -90,3 +104,4 @@ void main() {
 		}
 	}
 }
+#endif

@@ -433,6 +433,26 @@ index 2e13006892df9c01811fbb3e415c46af856787e8..0f14f3bc49f659e01b1e24bc7cb1997e
  // The instance group's register of a shader that reads gl_InstanceIndex, or XSC_NONE in a shader without it.
  int64_t xsdk_xsc_instance_index_reg(const XscInterface *si);
  // The dim a slot's sampler has: false where Python's sampler_dims.get gives None for a missing slot.
+diff --git a/src/xsc_program.c b/src/xsc_program.c
+index b289968130c7872c5887b81886f8bfe758f0a399..2d46583b7f4ee3fdb449464e6a9e94489117dba8 100644
+--- a/src/xsc_program.c
++++ b/src/xsc_program.c
+@@ -255,8 +255,14 @@ bool xsdk_xsc_program_alloc_interpolators(Xsc *x, XscProgram *p)
+ 
+ bool xsdk_xsc_program_input(Xsc *x, XscProgram *p, int64_t r, uint32_t usage)
+ {
+-	if (r != (int64_t)p->interpolator_count)
++	if (r < (int64_t)p->interpolator_count)
+ 		return xsdk_xsc_fail(x, XSDK_XSC_MALFORMED, "declare inputs in r0,r1,... order");
++	// A location the shader skips still takes its interpolator, as the vertex shader's export there lands in it.
++	while ((int64_t)p->interpolator_count < r) {
++		const uint32_t skipped = (uint32_t)p->interpolator_count;
++		if (!add_interpolator(x, p, (XscInterpolator){ skipped, usage, 0, usage_nibble(usage) }))
++			return false;
++	}
+ 	if (!add_interpolator(x, p, (XscInterpolator){ (uint32_t)r, usage, 0, usage_nibble(usage) }))
+ 		return false;
+ 	p->max_reg = highest(p->max_reg, r);
 diff --git a/src/xsc_resolve.c b/src/xsc_resolve.c
 index c1a96eaeed233cf3bd2fd862ca0de7c10f68a010..14a77e2140e63c5bc3b913e8be9fda7c19b79cc1 100644
 --- a/src/xsc_resolve.c
@@ -604,10 +624,21 @@ index 172c6027226ec5c746e5bc129a967efb73b19551..cf7d7e76565d6899c05375ac41b83f8d
  			return xsdk_xsc_fail(x, XSDK_XSC_MALFORMED, "Op%u too short for its result", (unsigned)opcode);
  		if (skip == 2) {
 diff --git a/xenos-toolchain/docs/xsc.md b/xenos-toolchain/docs/xsc.md
-index e3d93050753ab30372287e968e282095da88bcca..767008910dc40b161f6f1c836bdde665425d30f2 100644
+index e3d93050753ab30372287e968e282095da88bcca..97abb617312e9a1d6b0de266f1e37da18a0dd376 100644
 --- a/xenos-toolchain/docs/xsc.md
 +++ b/xenos-toolchain/docs/xsc.md
-@@ -140,6 +140,16 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
+@@ -112,7 +112,9 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
+ - VS inputs → vfetch in Location order; vertex-element usage by location:
+   0=POSITION, 1=COLOR, 2=TEXCOORD, 3+=TEXCOORD(idx++). Host vertex format
+   must match. VS output BuiltIn Position → oPos; Location *N* → interpolator
+-  o*N*. FS input Location *N* → register r*N*; output Location *N*, 0 to 3,
++  o*N*. FS input Location *N* → register r*N*, a location the shader skips
++  still taking its interpolator, as the vertex shader's export there lands
++  in it; output Location *N*, 0 to 3,
+   → oC*N*, colour target *N* (xenia:src/xenia/gpu/ucode.h:1836-1839), under
+   the one `alloc colors`; past 3 is refused. The container's outputs word is
+   the mask of them, bit *N* for oC*N* (XenosRecomp:XenosRecomp/shader.h:80-92),
+@@ -140,6 +142,16 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
    (`tests/test_fetch_fills.py`).
  - Bare uniforms → constant registers by Location; scalars read the register's
    `.x`.

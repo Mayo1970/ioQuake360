@@ -70,7 +70,8 @@ layout(location = 3) centroid in vec2 frag_tex_coord2;
 layout(location = 4) in vec2 fog_tex_coord;
 #endif
 
-#ifdef USE_DF
+// Q360: Xenos's pixel parameters hold no depth, so its df variant leaves depth to the GPU; df pipelines mask colour.
+#if defined (USE_DF) && !defined (Q360_XENOS)
 layout(depth_less) out float gl_FragDepth;
 #else
 layout(location = 0) out vec4 out_color;
@@ -133,6 +134,113 @@ void main() {
 #endif
 	vec4 base;
 
+#ifdef Q360_XENOS
+	// Q360: xost takes if/else arms that store one value each, so the samples and their colours are worked out first.
+#if defined (USE_TX1)
+	vec4 tex1 = texture(texture1, frag_tex_coord1);
+#endif
+#if defined (USE_TX2)
+	vec4 tex2 = texture(texture2, frag_tex_coord2);
+#endif
+#if defined (USE_CL1)
+#if defined (USE_CLX_IDENT)
+	vec4 color1 = tex1;
+#elif defined (USE_FIXED_COLOR)
+	vec4 color1 = tex1 * frag_color;
+#elif defined (USE_ENT_COLOR)
+	vec4 color1 = tex1 * ent_color1;
+#else
+	vec4 color1 = tex1 * frag_color1;
+#endif
+#endif
+#if defined (USE_CL2)
+#if defined (USE_CLX_IDENT)
+	vec4 color2 = tex2;
+#elif defined (USE_FIXED_COLOR)
+	vec4 color2 = tex2 * frag_color;
+#elif defined (USE_ENT_COLOR)
+	vec4 color2 = tex2 * ent_color2;
+#else
+	vec4 color2 = tex2 * frag_color2;
+#endif
+#endif
+#if defined (USE_TX1) && !defined (USE_CL1)
+	// tex_mode 2's colours, and the modulate's
+#if defined (USE_CLX_IDENT)
+	vec4 add1 = tex1;
+	vec4 mod1 = tex1;
+#elif defined (USE_FIXED_COLOR)
+	vec4 add1 = tex1 * frag_color;
+	vec4 mod1 = add1;
+#elif defined (USE_ENT_COLOR)
+	vec4 add1 = tex1 * ent_color1;
+	vec4 mod1 = add1;
+#else
+	vec4 add1 = tex1 * frag_color0;
+	vec4 mod1 = tex1;
+#endif
+#endif
+#if defined (USE_TX2) && !defined (USE_CL2)
+#if defined (USE_CLX_IDENT)
+	vec4 add2 = tex2;
+#elif defined (USE_FIXED_COLOR)
+	vec4 add2 = tex2 * frag_color;
+#elif defined (USE_ENT_COLOR)
+	vec4 add2 = tex2 * ent_color2;
+#else
+	vec4 add2 = tex2 * frag_color0;
+#endif
+#endif
+
+#if defined (USE_TX2) && defined (USE_CL2)
+	if ( tex_mode == 1 || tex_mode == 2 )
+		base = vec4( color0.rgb + color1.rgb + color2.rgb, color0.a * color1.a * color2.a );
+	else if ( tex_mode == 3 )
+		base = vec4( color0.rgb * color0.a + color1.rgb * color1.a + color2.rgb * color2.a,
+			color0.a * color0.a * color1.a * color1.a * color2.a * color2.a );
+	else if ( tex_mode == 4 )
+		base = vec4( color0.rgb * (1.0 - color0.a) + color1.rgb * (1.0 - color1.a) + color2.rgb * (1.0 - color2.a),
+			color0.a * (1.0 - color0.a) * color1.a * (1.0 - color1.a) * color2.a * (1.0 - color2.a) );
+	else if ( tex_mode == 5 )
+		base = mix( mix( color0, color1, color1.a ), color2, color2.a );
+	else if ( tex_mode == 6 )
+		base = mix( color2, mix( color1, color0, color1.a ), color2.a );
+	else if ( tex_mode == 7 )
+		base = (color2 + color2.a) * (color1 + color1.a) * color0;
+	else
+		base = color0 * color1 * color2;
+#elif defined (USE_TX2)
+	if ( tex_mode == 1 )
+		base = vec4( color0.rgb + tex1.rgb + tex2.rgb, color0.a * tex1.a * tex2.a );
+	else if ( tex_mode == 2 )
+		base = vec4( color0.rgb + add1.rgb + add2.rgb, color0.a * add1.a * add2.a );
+	else
+		base = color0 * tex1 * tex2;
+#elif defined (USE_TX1) && defined (USE_CL1)
+	if ( tex_mode == 1 || tex_mode == 2 )
+		base = vec4( color0.rgb + color1.rgb, color0.a * color1.a );
+	else if ( tex_mode == 3 )
+		base = vec4( color0.rgb * color0.a + color1.rgb * color1.a, color0.a * color0.a * color1.a * color1.a );
+	else if ( tex_mode == 4 )
+		base = vec4( color0.rgb * (1.0 - color0.a) + color1.rgb * (1.0 - color1.a),
+			color0.a * (1.0 - color0.a) * color1.a * (1.0 - color1.a) );
+	else if ( tex_mode == 5 )
+		base = mix( color0, color1, color1.a );
+	else if ( tex_mode == 6 )
+		base = mix( color1, color0, color1.a );
+	else if ( tex_mode == 7 )
+		base = (color1 + color1.a) * color0;
+	else
+		base = color0 * color1;
+#elif defined (USE_TX1)
+	if ( tex_mode == 1 )
+		base = vec4( color0.rgb + tex1.rgb, color0.a * tex1.a );
+	else if ( tex_mode == 2 )
+		base = vec4( color0.rgb + add1.rgb, color0.a * add1.a );
+	else
+		base = color0 * mod1;
+#endif
+#else // !Q360_XENOS
 	// triple-texture with non-identity colors in color1 and color2
 #if defined (USE_TX2)
 #ifdef USE_CL2
@@ -451,6 +559,7 @@ void main() {
 	}
 #endif // !USE_CL1
 #endif // !USE_TX1
+#endif // !Q360_XENOS
 
 #ifdef USE_ATEST
 #if 0
@@ -465,13 +574,11 @@ void main() {
 	} else
 #endif
 	// specialization: alpha-test function
-	if (alpha_test_func == 1) {
-		if (color0.a == alpha_test_value) discard;
-	} else if (alpha_test_func == 2) {
-		if (color0.a >= alpha_test_value) discard;
-	} else if (alpha_test_func == 3) {
-		if (color0.a < alpha_test_value) discard;
-	}
+	// Q360: one discard on a summed test, as xost takes no discard-only if/else arms in a pixel shader.
+	float alpha_killed = float(alpha_test_func == 1) * float(color0.a == alpha_test_value)
+		+ float(alpha_test_func == 2) * float(color0.a >= alpha_test_value)
+		+ float(alpha_test_func == 3) * float(color0.a < alpha_test_value);
+	if (alpha_killed > 0.0) discard;
 #endif
 
 #if !defined(USE_TX1) && !defined(USE_TX2)
@@ -479,6 +586,13 @@ void main() {
 #endif
 
 #ifdef USE_FOG
+#ifdef Q360_XENOS
+	// Q360: the acff modes as weights rather than an if/else, as xost merges one if/else local per pixel shader.
+	float fog_keep = 1.0 - fog.w;
+	vec4 fog_scale = vec4( vec3( mix( 1.0, fog_keep, float(acff == 1 || acff == 2) ) ),
+		mix( 1.0, fog_keep, float(acff == 2 || acff == 3) ) );
+	vec4 fogged = mix( base * fog_scale, mix( base, fog * fogColor, fog.a ), float(acff == 0) );
+#else
 	if ( acff == 1 ) {
 		// ACFF_RGB
 		base.rgb = base.rgb * (1.0 - fog.w);
@@ -492,24 +606,27 @@ void main() {
 		// default: ACFF_NONE
 		base = mix( base, fog * fogColor, fog.a );
 	}
+	vec4 fogged = base;
+#endif
+#else
+	vec4 fogged = base;
 #endif
 
-	if ( discard_mode == 1 ) {
-		if ( base.a == 0.0 ) {
-			discard;
-		}
-	} else if ( discard_mode == 2 ) {
-		if ( dot( base.rgb, base.rgb ) == 0.0 ) {
-			discard;
-		}
+	// Q360: one discard on a summed test, as for the alpha test.
+	float base_killed = float(discard_mode == 1) * float(fogged.a == 0.0)
+		+ float(discard_mode == 2) * float(dot( fogged.rgb, fogged.rgb ) == 0.0);
+	if ( base_killed > 0.0 ) {
+		discard;
 	}
 
 #ifdef USE_DF
-	if ( base.a < depth_fragment )
+	if ( fogged.a < depth_fragment )
 		discard;
+#endif
 
+#if defined (USE_DF) && !defined (Q360_XENOS)
 	gl_FragDepth = gl_FragCoord.z;
 #else
-	out_color = base;
+	out_color = fogged;
 #endif
 }

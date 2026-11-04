@@ -12,5 +12,8 @@ COPY src/ /root/xsdk-gcc-work/src/
 RUN bash /opt/xsdk-toolchain/build.sh || (tail -n 60 "$WORK"/logs/*.log; exit 1) \
 	&& rm -rf "$WORK"
 
+# glslang for make shaders; a layer of its own, after the toolchain, so adding it doesn't rebuild GCC.
+RUN apt-get update && apt-get install -y --no-install-recommends glslang-tools && rm -rf /var/lib/apt/lists/*
+
 ENV PATH=/root/xsdk-gcc/bin:$PATH
 WORKDIR /app
