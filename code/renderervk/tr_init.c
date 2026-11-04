@@ -1795,6 +1795,10 @@ static void R_Register( void )
 #else
 	r_fbo = ri.Cvar_Get( "r_fbo", "0", CVAR_ARCHIVE_ND | CVAR_LATCH );
 #endif
+#ifdef __XSDK__
+	// vk.c reads it at swapchain creation; vulkan4xenon presents FIFO only, so 1 matches what the screen does.
+	ri.Cvar_Get( "r_swapInterval", "1", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#endif
 	ri.Cvar_SetDescription( r_fbo, "Use framebuffer objects, enables gamma correction in windowed mode and allows arbitrary video size and screenshot/video capture.\n Required for bloom, HDR rendering, anti-aliasing and greyscale effects." );
 	r_hdr = ri.Cvar_Get( "r_hdr", "0", CVAR_ARCHIVE_ND | CVAR_LATCH );
 	ri.Cvar_SetDescription(r_hdr, "Enables high dynamic range frame buffer texture format. Requires \\r_fbo 1.\n -1: 4-bit, for testing purposes, heavy color banding, might not work on all systems\n  0: 8 bit, default, moderate color banding with multi-stage shaders\n  1: 16 bit, enhanced blending precision, no color banding, might decrease performance on AMD / Intel GPUs\n" );
@@ -1802,11 +1806,18 @@ static void R_Register( void )
 	TR_CvarCheckRange( r_bloom, "0", "1", CV_INTEGER );
 	ri.Cvar_SetDescription(r_bloom, "Enables bloom post-processing effect. Requires \\r_fbo 1.");
 
+	// vulkan4xenon images have one sample, and supersampling doubles the 720p targets in a 256 MB heap.
 	r_ext_multisample = ri.Cvar_Get( "r_ext_multisample", "0", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#ifdef __XSDK__
+	ri.Cvar_Set( "r_ext_multisample", "0" );
+#endif
 	TR_CvarCheckRange( r_ext_multisample, "0", "64", CV_INTEGER );
 	ri.Cvar_SetDescription( r_ext_multisample, "For anti-aliasing geometry edges, valid values: 0|2|4|6|8. Requires \\r_fbo 1." );
 
 	r_ext_supersample = ri.Cvar_Get( "r_ext_supersample", "0", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#ifdef __XSDK__
+	ri.Cvar_Set( "r_ext_supersample", "0" );
+#endif
 	TR_CvarCheckRange( r_ext_supersample, "0", "1", CV_INTEGER );
 	ri.Cvar_SetDescription( r_ext_supersample, "Super-sample anti-aliasing, requires \\r_fbo 1." );
 #if 0
@@ -1815,10 +1826,18 @@ static void R_Register( void )
 	ri.Cvar_SetDescription( r_ext_alpha_to_coverage, "Enables alpha-to-coverage multisampling, requires \\r_fbo 1." );
 #endif
 
+#ifdef __XSDK__
+	r_renderWidth = ri.Cvar_Get( "r_renderWidth", "1280", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#else
 	r_renderWidth = ri.Cvar_Get( "r_renderWidth", "800", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#endif
 	TR_CvarCheckRange( r_renderWidth, "96", NULL, CV_INTEGER );
 	ri.Cvar_SetDescription( r_renderWidth, "Video width to render to when \\r_renderScale > 0." );
+#ifdef __XSDK__
+	r_renderHeight = ri.Cvar_Get( "r_renderHeight", "720", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#else
 	r_renderHeight = ri.Cvar_Get( "r_renderHeight", "600", CVAR_ARCHIVE_ND | CVAR_LATCH );
+#endif
 	TR_CvarCheckRange( r_renderHeight, "72", NULL, CV_INTEGER );
 	ri.Cvar_SetDescription( r_renderHeight, "Video height to render to when \\r_renderScale > 0." );
 
