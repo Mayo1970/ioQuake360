@@ -1,3 +1,4 @@
+# Runs make with the given arguments in the toolchain container, with the repo root at /app.
 $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $image = $env:Q360_IMAGE
 if ([string]::IsNullOrEmpty($image)) {
@@ -15,26 +16,17 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-$hasJobs = $false
+$jobs = '-j\"$(nproc)\"'
 foreach ($arg in $args) {
-    if ($arg -match '^-j') {
-        $hasJobs = $true
+    if ($arg -match '^(-j|--jobs)') {
+        $jobs = ''
         break
     }
 }
 
-$dockerArgs = @('run', '--rm')
-if (-not [Console]::IsInputRedirected) {
-    $dockerArgs += '-it'
-}
-$dockerArgs += @('--volume', "${repoRoot}:/app", '--workdir', '/app', $image, 'bash', '-c')
-if ($hasJobs) {
-    $dockerArgs += 'exec make \"$@\"'
-} else {
-    $dockerArgs += 'exec make -j\"$(nproc)\" \"$@\"'
-}
-$dockerArgs += 'make'
-$dockerArgs += $args
+# PowerShell 5.1 passes embedded quotes to native programs unescaped, hence the \" in the bash command.
+$dockerArgs = @('run', '--rm', '--volume', "${repoRoot}:/app", '--workdir', '/app', $image,
+    'bash', '-c', "exec make $jobs \`"`$@\`"", 'make') + $args
 
 & docker @dockerArgs
 exit $LASTEXITCODE
