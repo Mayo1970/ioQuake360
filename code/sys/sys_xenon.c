@@ -428,6 +428,7 @@ void Sys_Error( const char *error, ... )
 
 void Sys_Quit( void )
 {
+	IN_Shutdown();
 	Sys_Exit( 0 );
 }
 
