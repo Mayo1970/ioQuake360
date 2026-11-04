@@ -2,7 +2,7 @@
 
 This file lists how Quake3e's `code/renderervk/` (commit `3173cef0`) was ported to ioq3's renderer API (commit `87a99d18`). The null renderer remains the default. `RENDERER=vk` statically links renderervk, while engine objects keep the same flags and shared build paths for both renderer choices.
 
-The ioq3 `refimport_t` is extended only under `__XSDK__` with the approved Vulkan, gamma and JPEG hooks. The Vulkan platform hooks are Q360-14 stubs: init reports 1280x720, gamma is disabled, and instance/surface creation is unavailable. Q360-15 supplies the real platform layer. The build uses Vulkan headers from `vulkan4xenon`; it does not link `libvulkan4xenon.a`.
+The ioq3 `refimport_t` is extended only under `__XSDK__` with the approved Vulkan, gamma and JPEG hooks. The platform creates the 1280x720 `VK_KHR_display` surface through `vulkan4xenon`; gamma stays disabled. `RENDERER=vk` links `libvulkan4xenon.a`, while the default null renderer does not.
 
 ## `refimport_t`
 
@@ -66,6 +66,24 @@ The ioq3 `refimport_t` is extended only under `__XSDK__` with the approved Vulka
 | Quake3e's copied `tr_public.h` and `tr_types.h` shadow ioq3's API; its bundled `renderercommon/vulkan/` shadows the selected Vulkan headers. | Delete those copies. Renderer common sources include ioq3 headers; `vk.h` includes `<vulkan/vulkan.h>` from the submodule include path, added for all objects. | `code/renderervk/renderercommon/`, `code/renderervk/vk.h`, `code/renderercommon/tr_public.h`, `Makefile` |
 | Quake3e renderer common sources use paths relative to its original tree; the PNG loader refers to a missing local `qcommon/puff.h`. | Point includes at ioq3's qcommon and renderercommon headers and build ioq3's `puff.c` for `RENDERER=vk`. | `code/renderervk/renderercommon/*.c`, `code/renderercommon/puff.c`, `Makefile` |
 | ioq3's renderercommon image loaders and `tr_font.c` depend on the GL renderer. | The Vulkan source list builds Quake3e's renderercommon sources and leaves ioq3's GL sources out; FreeType remains disabled. | `Makefile` |
+
+## vulkan4xenon
+
+Each row cites the `vulkan4xenon/docs/SUPPORT.md` section. "No change" rows are limits the upstream code already respects.
+
+| Missing in vulkan4xenon | Resolution | Files |
+|---|---|---|
+| The only display path is `VK_KHR_display`: one 1280x720 mode, full-screen, opaque, untransformed surfaces (Display and swapchain). | `VK_CreateSurface` takes the first display mode and creates plane 0 with identity transform and opaque alpha; `VK_GetInstanceProcAddr` returns the layer's `vkGetInstanceProcAddr`. | `code/sys/xenon_vk.c` |
+| Swapchain images are colour attachments only (Display and swapchain). With `r_fbo 0` the renderer asks for transfer usage and stops. | `r_fbo` defaults to 1 and is forced to 1, so the final pass draws into the swapchain. | `code/renderervk/tr_init.c` |
+| `sampledImageDepthSampleCounts` is 0 and images have one sample (Physical device). `MIN` of colour and depth counts gives 0 samples for the screen map. | `vkMaxSamples` is 1 and MSAA is off. | `code/renderervk/vk.c` |
+| Storage-buffer descriptors are refused (Descriptor sets). The flare test creates them at init. | The storage pool entry, set layout, pipeline layout, buffer, descriptor and their destroy calls are compiled out. `fragmentStores` stays false, so upstream `R_ClearFlares` keeps flares off. | `code/renderervk/vk.c` |
+| `R16G16B16A16_UNORM` (`r_hdr 1`) and `B4G4R4A4` (`r_hdr -1`) are not colour attachments (Formats). | `get_hdr_format` returns the base format. | `code/renderervk/vk.c` |
+| Vulkan 1.0 only, no layers; instance extensions `VK_KHR_surface` and `VK_KHR_display` only (Version, Extensions). | No change: the release build asks 1.0 (1.1 needs `_DEBUG`), validation needs `_WIN32`, and the renderer enables only listed extensions. | - |
+| Only six device features (Device). | No change: `wideLines`, `fragmentStoresAndAtomics` and `shaderInt64` are enabled only when reported. | - |
+| One surface format, `B8G8R8A8_UNORM` / `SRGB_NONLINEAR` (Display and swapchain). | No change: `vk_select_surface_format` falls back to the base format for any `r_presentBits`. | - |
+| FIFO only, 2 or 3 images, one acquired image, one swapchain, no `oldSwapchain` (Display and swapchain). | No change: the renderer picks FIFO and 3 images, presents before its next acquire, and destroys the swapchain before a restart with `oldSwapchain` `VK_NULL_HANDLE`. | - |
+| Linear tiling has no `BLIT_DST` (Formats). | No change: `vk_blit_enabled` is false and `capture_format` falls back to `color_format`. | - |
+| Xenia has no display controller, so `vkCreateSwapchainKHR` returns `VK_ERROR_INITIALIZATION_FAILED` (Display and swapchain). | Expected; no workaround. | - |
 
 ## JPEG
 
