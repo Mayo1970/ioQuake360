@@ -599,11 +599,13 @@ extern intptr_t cgame_vmMain( int callNum, int arg0, int arg1, int arg2, int arg
 extern char __cgame_data_start[], __cgame_data_end[];
 extern char __cgame_bss_start[], __cgame_bss_end[];
 
+#ifdef Q360_NATIVE_UI
 extern void ui_dllEntry( intptr_t (QDECL *systemcalls)(intptr_t, ...) );
 extern intptr_t ui_vmMain( int callNum, int arg0, int arg1, int arg2, int arg3,
 	int arg4, int arg5, int arg6, int arg7, int arg8, int arg9, int arg10, int arg11 );
 extern char __ui_data_start[], __ui_data_end[];
 extern char __ui_bss_start[], __ui_bss_end[];
+#endif
 
 typedef struct {
 	const char *name;
@@ -618,8 +620,10 @@ static xenonNativeModule_t xenon_native_modules[] = {
 		__qagame_bss_start, __qagame_bss_end, NULL },
 	{ "cgame", cgame_dllEntry, cgame_vmMain, __cgame_data_start, __cgame_data_end,
 		__cgame_bss_start, __cgame_bss_end, NULL },
+#ifdef Q360_NATIVE_UI
 	{ "ui", ui_dllEntry, ui_vmMain, __ui_data_start, __ui_data_end,
 		__ui_bss_start, __ui_bss_end, NULL },
+#endif
 };
 
 void * QDECL Sys_LoadGameDll( const char *name, vmMainProc *entryPoint,
