@@ -308,3 +308,25 @@ char *Com_MD5File( const char *fn, int length, const char *prefix, int prefix_le
 	}
 	return final;
 }
+
+#ifdef __XSDK__
+// Com_MD5File on a memory buffer, for cl_main.c's in-memory qkey.
+char *Com_MD5Buffer( const byte *data, int length, const char *prefix, int prefix_len )
+{
+	static char final[33];
+	unsigned char digest[16];
+	MD5_CTX md5;
+	int i;
+
+	MD5Init(&md5);
+	if( prefix_len && *prefix )
+		MD5Update(&md5, (unsigned char *)prefix, prefix_len);
+	MD5Update(&md5, data, length);
+	MD5Final(&md5, digest);
+	final[0] = '\0';
+	for(i = 0; i < 16; i++) {
+		Q_strcat(final, sizeof(final), va("%02X", digest[i]));
+	}
+	return final;
+}
+#endif

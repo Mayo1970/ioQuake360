@@ -118,6 +118,12 @@ cvar_t	*cl_lanForcePackets;
 
 cvar_t	*cl_guidServerUniq;
 
+#ifdef __XSDK__
+// qkey kept in memory when the home dir is read-only: OA rejects a local client with an empty cl_guid.
+static byte cl_qkeyMem[QKEY_SIZE];
+static qboolean cl_qkeyMemValid;
+#endif
+
 cvar_t	*cl_consoleKeys;
 
 cvar_t	*cl_rate;
@@ -1349,8 +1355,13 @@ static void CL_UpdateGUID( const char *prefix, int prefix_len )
 	len = FS_BaseDir_FOpenFileRead( QKEY_FILE, &f );
 	FS_FCloseFile( f );
 
-	if( len != QKEY_SIZE ) 
+	if( len != QKEY_SIZE )
+#ifdef __XSDK__
+		Cvar_Set( "cl_guid", cl_qkeyMemValid ?
+			Com_MD5Buffer( cl_qkeyMem, QKEY_SIZE, prefix, prefix_len ) : "" );
+#else
 		Cvar_Set( "cl_guid", "" );
+#endif
 	else
 		Cvar_Set( "cl_guid", Com_MD5File( QKEY_FILE, QKEY_SIZE,
 			prefix, prefix_len ) );
@@ -3479,6 +3490,11 @@ static void CL_GenerateQKey(void)
 		if( !f ) {
 			Com_Printf( "QKEY could not open %s for write\n",
 				QKEY_FILE );
+#ifdef __XSDK__
+			Com_Memcpy( cl_qkeyMem, buff, sizeof( cl_qkeyMem ) );
+			cl_qkeyMemValid = qtrue;
+			Com_Printf( "QKEY kept in memory for this session\n" );
+#endif
 			return;
 		}
 		FS_Write( buff, sizeof(buff), f );
