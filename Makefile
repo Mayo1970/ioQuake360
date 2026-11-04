@@ -88,10 +88,11 @@ endif
 NATIVE_MODULE_OBJECTS :=
 NATIVE_MODULE_DEPS :=
 
-# Each flavor links qagame, cgame and ui natively.
+# Q3A and TA link qagame/cgame natively; OA also links ui.
 CFLAGS += -DQ360_NATIVE_MODULES
 
 ifeq ($(OA),1)
+CFLAGS += -DQ360_NATIVE_UI
 QAGAME_SOURCES := \
 	code/oa/code/game/g_main.c \
 	code/oa/code/game/ai_chat.c \
@@ -290,64 +291,6 @@ ifeq ($(TA),1)
 CGAME_SOURCES += \
 	code/cgame/cg_newdraw.c \
 	code/ui/ui_shared.c
-
-UI_SOURCES := \
-	code/ui/ui_main.c \
-	code/game/bg_misc.c \
-	code/game/bg_lib.c \
-	code/ui/ui_atoms.c \
-	code/ui/ui_gameinfo.c \
-	code/ui/ui_players.c \
-	code/ui/ui_shared.c \
-	code/qcommon/q_math.c \
-	code/qcommon/q_shared.c \
-	code/ui/ui_syscalls.c
-else
-UI_SOURCES := \
-	code/q3_ui/ui_main.c \
-	code/game/bg_misc.c \
-	code/game/bg_lib.c \
-	code/q3_ui/ui_addbots.c \
-	code/q3_ui/ui_atoms.c \
-	code/q3_ui/ui_cdkey.c \
-	code/q3_ui/ui_cinematics.c \
-	code/q3_ui/ui_confirm.c \
-	code/q3_ui/ui_connect.c \
-	code/q3_ui/ui_controls2.c \
-	code/q3_ui/ui_credits.c \
-	code/q3_ui/ui_demo2.c \
-	code/q3_ui/ui_display.c \
-	code/q3_ui/ui_gameinfo.c \
-	code/q3_ui/ui_ingame.c \
-	code/q3_ui/ui_loadconfig.c \
-	code/q3_ui/ui_menu.c \
-	code/q3_ui/ui_mfield.c \
-	code/q3_ui/ui_mods.c \
-	code/q3_ui/ui_network.c \
-	code/q3_ui/ui_options.c \
-	code/q3_ui/ui_playermodel.c \
-	code/q3_ui/ui_players.c \
-	code/q3_ui/ui_playersettings.c \
-	code/q3_ui/ui_preferences.c \
-	code/q3_ui/ui_qmenu.c \
-	code/q3_ui/ui_removebots.c \
-	code/q3_ui/ui_saveconfig.c \
-	code/q3_ui/ui_serverinfo.c \
-	code/q3_ui/ui_servers2.c \
-	code/q3_ui/ui_setup.c \
-	code/q3_ui/ui_sound.c \
-	code/q3_ui/ui_sparena.c \
-	code/q3_ui/ui_specifyserver.c \
-	code/q3_ui/ui_splevel.c \
-	code/q3_ui/ui_sppostgame.c \
-	code/q3_ui/ui_spskill.c \
-	code/q3_ui/ui_startserver.c \
-	code/q3_ui/ui_team.c \
-	code/q3_ui/ui_teamorders.c \
-	code/q3_ui/ui_video.c \
-	code/qcommon/q_math.c \
-	code/qcommon/q_shared.c \
-	code/ui/ui_syscalls.c
 endif
 endif
 
@@ -358,8 +301,12 @@ UI_OBJECTS := $(patsubst %.c,$(BUILD)/ui/%.o,$(UI_SOURCES))
 QAGAME_CFLAGS := $(CFLAGS) -DQAGAME -fno-common -G 0
 CGAME_CFLAGS := $(CFLAGS) -DCGAME -fno-common -G 0
 UI_CFLAGS := $(CFLAGS) -DUI -fno-common -G 0
-NATIVE_MODULE_OBJECTS := $(BUILD)/qagame_native.o $(BUILD)/cgame_native.o $(BUILD)/ui_native.o
-NATIVE_MODULE_DEPS := $(QAGAME_OBJECTS:.o=.d) $(CGAME_OBJECTS:.o=.d) $(UI_OBJECTS:.o=.d)
+NATIVE_MODULE_OBJECTS := $(BUILD)/qagame_native.o $(BUILD)/cgame_native.o
+NATIVE_MODULE_DEPS := $(QAGAME_OBJECTS:.o=.d) $(CGAME_OBJECTS:.o=.d)
+ifeq ($(OA),1)
+NATIVE_MODULE_OBJECTS += $(BUILD)/ui_native.o
+NATIVE_MODULE_DEPS += $(UI_OBJECTS:.o=.d)
+endif
 DEPS += $(NATIVE_MODULE_DEPS)
 LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
 LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group

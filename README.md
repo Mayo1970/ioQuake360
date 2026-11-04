@@ -6,13 +6,14 @@ open [xsdk](https://github.com/openpak/x360-sdk) homebrew SDK and
 [Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer.
 
 Three builds are produced from the same source tree. Each is a `.xex` for an
-RGH/JTAG console, with native `cgame`, `qagame` and `ui` (no QVM):
+RGH/JTAG console, with native `cgame` and `qagame`. Open Arena also has a
+native `ui`; ioQuake3 and Team Arena run `vm/ui.qvm` from their paks.
 
-| Variant | XEX | Game dir |
-|---|---|---|
-| ioQuake3   | `ioquake360.xex`    | `baseq3` |
-| Team Arena | `ioquake360_ta.xex` | `baseq3` + `missionpack` |
-| Open Arena | `ioquake360_oa.xex` | `baseoa` |
+| Variant | XEX | Game dir | Native modules |
+|---|---|---|---|
+| ioQuake3   | `ioquake360.xex`    | `baseq3` | `qagame`, `cgame` |
+| Team Arena | `ioquake360_ta.xex` | `baseq3` + `missionpack` | `qagame`, `cgame` |
+| Open Arena | `ioquake360_oa.xex` | `baseoa` | `qagame`, `cgame`, `ui` |
 
 ## Status
 
