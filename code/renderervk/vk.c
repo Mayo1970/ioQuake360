@@ -2638,6 +2638,68 @@ static void vk_create_geometry_buffers( VkDeviceSize size )
 }
 
 
+#ifdef __XSDK__
+// gamma.vert's corners and texture coordinates, x, y, s, t, as a strip; xost has no gl_VertexIndex to index them by.
+static const float quad_vertices[4][4] = {
+	{ -1.0f, 1.0f, 0.0f, 1.0f }, { -1.0f, -1.0f, 0.0f, 0.0f }, { 1.0f, 1.0f, 1.0f, 1.0f }, { 1.0f, -1.0f, 1.0f, 0.0f }
+};
+static const VkVertexInputBindingDescription quad_binding = { 0, sizeof( quad_vertices[0] ), VK_VERTEX_INPUT_RATE_VERTEX };
+static const VkVertexInputAttributeDescription quad_attributes[2] = {
+	{ 0, 0, VK_FORMAT_R32G32_SFLOAT, 0 },
+	{ 2, 0, VK_FORMAT_R32G32_SFLOAT, 2 * sizeof( float ) },
+};
+
+static void vk_create_quad_buffer( void )
+{
+	VkMemoryRequirements memory_requirements;
+	VkMemoryAllocateInfo alloc_info;
+	VkBufferCreateInfo desc;
+	void *data;
+
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.pNext = NULL;
+	desc.flags = 0;
+	desc.size = sizeof( quad_vertices );
+	desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	desc.queueFamilyIndexCount = 0;
+	desc.pQueueFamilyIndices = NULL;
+	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &vk.quad_buffer ) );
+
+	qvkGetBufferMemoryRequirements( vk.device, vk.quad_buffer, &memory_requirements );
+	alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	alloc_info.pNext = NULL;
+	alloc_info.allocationSize = memory_requirements.size;
+	alloc_info.memoryTypeIndex = find_memory_type( memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT );
+	VK_CHECK( qvkAllocateMemory( vk.device, &alloc_info, NULL, &vk.quad_memory ) );
+	VK_CHECK( qvkBindBufferMemory( vk.device, vk.quad_buffer, vk.quad_memory, 0 ) );
+
+	VK_CHECK( qvkMapMemory( vk.device, vk.quad_memory, 0, VK_WHOLE_SIZE, 0, &data ) );
+	Com_Memcpy( data, quad_vertices, sizeof( quad_vertices ) );
+	qvkUnmapMemory( vk.device, vk.quad_memory );
+
+	SET_OBJECT_NAME( vk.quad_buffer, "post-process quad", VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
+}
+
+static void vk_bind_post_quad( void )
+{
+	const VkDeviceSize offset = 0;
+	qvkCmdBindVertexBuffers( vk.cmd->command_buffer, 0, 1, &vk.quad_buffer, &offset );
+}
+
+static void vk_post_quad_input( VkPipelineVertexInputStateCreateInfo *state )
+{
+	state->vertexBindingDescriptionCount = 1;
+	state->pVertexBindingDescriptions = &quad_binding;
+	state->vertexAttributeDescriptionCount = ARRAY_LEN( quad_attributes );
+	state->pVertexAttributeDescriptions = quad_attributes;
+}
+#else
+#define vk_bind_post_quad()
+#define vk_post_quad_input( state )
+#endif
+
+
 #ifndef __XSDK__
 static void vk_create_storage_buffer( uint32_t size )
 {
@@ -2765,8 +2827,14 @@ qboolean vk_alloc_vbo( const byte *vbo_data, int vbo_size )
 }
 #endif
 
+#ifdef __XSDK__
+// The shader pack from make shaders: each variant's SPIR-V, with the Xenos container vkCreateShaderModule finds by it.
+#include "shaders/xenon/vk_shader_bundle.c"
+#define SHADER_MODULE(name) SHADER_MODULE((const uint8_t *)name##_spirv,sizeof(name##_spirv))
+#else
 #include "shaders/spirv/shader_data.c"
 #define SHADER_MODULE(name) SHADER_MODULE(name,sizeof(name))
+#endif
 
 static void vk_create_shader_modules( void )
 {
@@ -2950,11 +3018,14 @@ static void vk_create_shader_modules( void )
 	SET_OBJECT_NAME( vk.modules.fog_vs, "fog-only vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
 	SET_OBJECT_NAME( vk.modules.fog_fs, "fog-only fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
 
+#ifndef __XSDK__
+	// The flare test's dot pipeline needs fragment stores, which vulkan4xenon lacks; the shader pack leaves it out.
 	vk.modules.dot_vs = SHADER_MODULE( dot_vert_spv );
 	vk.modules.dot_fs = SHADER_MODULE( dot_frag_spv );
 
 	SET_OBJECT_NAME( vk.modules.dot_vs, "dot vertex module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
 	SET_OBJECT_NAME( vk.modules.dot_fs, "dot fragment module", VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT );
+#endif
 
 	vk.modules.bloom_fs = SHADER_MODULE( bloom_frag_spv );
 	vk.modules.blur_fs = SHADER_MODULE( blur_frag_spv );
@@ -4358,7 +4429,9 @@ void vk_initialize( void )
 	vk_create_geometry_buffers( vk.geometry_buffer_size_new );
 	vk.geometry_buffer_size_new = 0;
 
-#ifndef __XSDK__
+#ifdef __XSDK__
+	vk_create_quad_buffer();
+#else
 	vk_create_storage_buffer( MAX_FLARES * vk.storage_alignment );
 #endif
 
@@ -4615,7 +4688,10 @@ void vk_shutdown( refShutdownCode_t code )
 
 	vk_destroy_sync_primitives();
 
-#ifndef __XSDK__
+#ifdef __XSDK__
+	qvkDestroyBuffer( vk.device, vk.quad_buffer, NULL );
+	qvkFreeMemory( vk.device, vk.quad_memory, NULL );
+#else
 	qvkDestroyBuffer( vk.device, vk.storage.buffer, NULL );
 	qvkFreeMemory( vk.device, vk.storage.memory, NULL );
 #endif
@@ -4692,8 +4768,10 @@ void vk_shutdown( refShutdownCode_t code )
 	qvkDestroyShaderModule(vk.device, vk.modules.fog_vs, NULL);
 	qvkDestroyShaderModule(vk.device, vk.modules.fog_fs, NULL);
 
+#ifndef __XSDK__
 	qvkDestroyShaderModule(vk.device, vk.modules.dot_vs, NULL);
 	qvkDestroyShaderModule(vk.device, vk.modules.dot_fs, NULL);
+#endif
 
 	qvkDestroyShaderModule(vk.device, vk.modules.bloom_fs, NULL);
 	qvkDestroyShaderModule(vk.device, vk.modules.blur_fs, NULL);
@@ -5259,6 +5337,7 @@ void vk_create_post_process_pipeline( int program_index, uint32_t width, uint32_
 	vertex_input_state.pVertexBindingDescriptions = NULL;
 	vertex_input_state.vertexAttributeDescriptionCount = 0;
 	vertex_input_state.pVertexBindingDescriptions = NULL;
+	vk_post_quad_input( &vertex_input_state );
 
 	// shaders
 	set_shader_stage_desc( shader_stages+0, VK_SHADER_STAGE_VERTEX_BIT, vk.modules.gamma_vs, "main" );
@@ -5492,6 +5571,7 @@ void vk_create_blur_pipeline( uint32_t index, uint32_t width, uint32_t height, q
 	vertex_input_state.pVertexBindingDescriptions = NULL;
 	vertex_input_state.vertexAttributeDescriptionCount = 0;
 	vertex_input_state.pVertexBindingDescriptions = NULL;
+	vk_post_quad_input( &vertex_input_state );
 
 	// shaders
 	set_shader_stage_desc( shader_stages+0, VK_SHADER_STAGE_VERTEX_BIT, vk.modules.gamma_vs, "main" );
@@ -7567,6 +7647,7 @@ void vk_end_frame( void )
 			qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.capture_pipeline );
 			qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
 
+			vk_bind_post_quad();
 			qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		}
 
@@ -7584,6 +7665,7 @@ void vk_end_frame( void )
 			qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.gamma_pipeline );
 			qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
 
+			vk_bind_post_quad();
 			qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		}
 	}
@@ -7980,6 +8062,7 @@ qboolean vk_bloom( void )
 	vk_begin_bloom_extract_render_pass();
 	qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.bloom_extract_pipeline );
 	qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.color_descriptor, 0, NULL );
+	vk_bind_post_quad();
 	qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 	vk_end_render_pass();
 
@@ -7988,6 +8071,7 @@ qboolean vk_bloom( void )
 		vk_begin_blur_render_pass( i+0 );
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.blur_pipeline[i+0] );
 		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.bloom_image_descriptor[i+0], 0, NULL );
+		vk_bind_post_quad();
 		qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		vk_end_render_pass();
 
@@ -7995,6 +8079,7 @@ qboolean vk_bloom( void )
 		vk_begin_blur_render_pass( i+1 );
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.blur_pipeline[i+1] );
 		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.bloom_image_descriptor[i+1], 0, NULL );
+		vk_bind_post_quad();
 		qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		vk_end_render_pass();
 #if 0
@@ -8002,6 +8087,7 @@ qboolean vk_bloom( void )
 		vk_begin_blur_render_pass( i+0 );
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.blur_pipeline[i+0] );
 		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.bloom_image_descriptor[i+2], 0, NULL );
+		vk_bind_post_quad();
 		qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		vk_end_render_pass();
 
@@ -8009,6 +8095,7 @@ qboolean vk_bloom( void )
 		vk_begin_blur_render_pass( i+1 );
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.blur_pipeline[i+1] );
 		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_post_process, 0, 1, &vk.bloom_image_descriptor[i+1], 0, NULL );
+		vk_bind_post_quad();
 		qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 		vk_end_render_pass();
 #endif
@@ -8026,6 +8113,7 @@ qboolean vk_bloom( void )
 		// blend downscaled buffers to main fbo
 		qvkCmdBindPipeline( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.bloom_blend_pipeline );
 		qvkCmdBindDescriptorSets( vk.cmd->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vk.pipeline_layout_blend, 0, ARRAY_LEN(dset), dset, 0, NULL );
+		vk_bind_post_quad();
 		qvkCmdDraw( vk.cmd->command_buffer, 4, 1, 0, 0 );
 	}
 

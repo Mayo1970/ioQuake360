@@ -17,6 +17,16 @@ layout(constant_id = 10) const int depth_b = 255;
 
 const vec3 sRGB = { 0.2126, 0.7152, 0.0722 };
 
+#ifdef Q360_XENOS
+// Q360: branch-free, as xost merges no if/else into a pixel shader's output here; no dither, which reads
+// gl_FragCoord as ints the console's 8-bit targets don't need.
+void main() {
+	vec3 tex = texture(texture0, frag_tex_coord).rgb;
+	vec3 base = mix(tex, vec3(dot(tex, sRGB)), greyscale);
+	vec3 corrected = mix(base, pow(base, vec3(gamma)), float(abs(gamma - 1.0) > 0.0));
+	out_color = vec4(corrected * obScale, 1);
+}
+#else
 const int bayerSize = 8;
 const float bayerMatrix[bayerSize * bayerSize] = {
 	0,  32, 8,  40, 2,  34, 10, 42,
@@ -72,3 +82,4 @@ void main() {
 		out_color.rgb = dither(out_color.rgb);
 	}
 }
+#endif

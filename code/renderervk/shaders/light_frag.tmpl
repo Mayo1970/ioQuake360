@@ -37,6 +37,70 @@ layout (constant_id = 3) const int alpha_to_coverage = 0;
 //layout (constant_id = 4) const int color_mode = 0;
 layout (constant_id = 5) const int abs_light = 0;
 
+#ifdef Q360_XENOS
+// Q360: xost stores a pixel shader's local once and takes no discard-only if/else arms, so the tests are summed into
+// discards and abs_light is a weight. alpha_to_coverage needs MSAA, which the port doesn't turn on.
+void main() {
+#ifdef USE_FOG
+	vec4 fog = texture(fogtexture, fog_tex_coord);
+#endif
+	vec4 tex = texture(texture0, frag_tex_coord);
+
+	float alpha_killed = float(alpha_test_func == 1) * float(tex.a == alpha_test_value)
+		+ float(alpha_test_func == 2) * float(tex.a >= alpha_test_value)
+		+ float(alpha_test_func == 3) * float(tex.a < alpha_test_value);
+	if (alpha_killed > 0.0)
+		discard;
+
+	vec4 lightColorRadius = lightColor;
+
+#ifdef USE_LINE
+	// project fragment on light vector; Q360: a subtraction, as xost has no negate
+	float scale = clamp( (0.0 - dot( L.xyz, lightVector.xyz )) * lightVector.w, 0.0, 1.0 );
+	vec4 LL = lightVector * scale + L;
+
+	vec3 nL = normalize(LL.xyz); // normalized light vector
+	vec3 nV = normalize(V.xyz);	// normalized view vector
+
+	// light intensity
+	float intensFactor = 1.0 - (dot(LL.xyz, LL.xyz) * lightColorRadius.w);
+#else
+	vec3 nL = normalize(L.xyz);	// normalized light vector
+	vec3 nV = normalize(V.xyz);	// normalized view vector
+
+	// light intensity
+	float intensFactor = 1.0 - dot(L.xyz, L.xyz) * lightColorRadius.w;
+#endif
+
+	if (intensFactor <= 0.0)
+		discard;
+	vec3 intens = lightColorRadius.rgb * intensFactor;
+
+#ifdef USE_FOG
+	// modulate base by inverted fog alpha
+	vec4 base = vec4( tex.xyz * ( 1.0 - fog.a ), tex.a );
+#else
+	vec4 base = tex;
+#endif
+
+	// Lambertian diffuse reflection term (N.L)
+	float lambert = dot(N, nL);
+
+	// specular reflection term (N.H)
+	float halfway = dot(N, normalize(nL + nV));
+
+	// make sure that light and eye vectors are on the same plane side
+	float abs_on = float(abs_light != 0);
+	if (abs_on * float(lambert * dot(N, nV) <= 0.0) > 0.0)
+		discard;
+	float diffuse = mix( lambert, abs( lambert ), abs_on );
+	float specFactor = mix( halfway, abs( halfway ), abs_on );
+
+	vec4 spec = vec4(pow(specFactor, 10.0)*0.25) * base * 0.8;
+
+	out_color = (base * vec4(diffuse) + spec) * vec4(intens, 1.0);
+}
+#else
 float CorrectAlpha(float threshold, float alpha, vec2 tc)
 {
 	ivec2 ts = textureSize(texture0, 0);
@@ -122,3 +186,4 @@ void main() {
 
 	out_color = (base * vec4(diffuse) + spec) * vec4(intens, 1.0);
 }
+#endif

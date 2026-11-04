@@ -456,6 +456,12 @@ typedef struct {
 		VkDescriptorSet	descriptor;
 	} storage;
 
+#ifdef __XSDK__
+	// The post-process passes' quad (vk.c, vk_create_quad_buffer).
+	VkBuffer quad_buffer;
+	VkDeviceMemory quad_memory;
+#endif
+
 	uint32_t uniform_item_size;
 	uint32_t uniform_alignment;
 	uint32_t storage_alignment;

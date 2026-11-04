@@ -1,0 +1,900 @@
+diff --git a/bench/shaders.c b/bench/shaders.c
+index 2c6051ea1d4c2fb45706d57be3aa347c39b1ab99..3d17dc57134a41118a04375180f4f2cd27137a96 100644
+--- a/bench/shaders.c
++++ b/bench/shaders.c
+@@ -693,18 +693,18 @@ static const V4xShaderResource sprite_vert_instanced_resources[] = {
+ };
+ 
+ static const V4xShader shaders[] = {
+-	{ 0xA2D0D69A9CE841C6ull, 784, mesh_frag_container, 252, NULL, 0, mesh_frag_resources, 2, NULL, 0, false },
+-	{ 0xCDE214766F4D8DE0ull, 1252, mesh_vert_container, 376, mesh_vert_literals, 1, mesh_vert_resources, 1, NULL, 0, false },
+-	{ 0xCDE214766F4D8DE0ull, 1252, mesh_vert_instanced_container, 484, mesh_vert_instanced_literals, 1, mesh_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x33E8B01AEE5ADDECull, 1164, mesh_gray_frag_container, 332, mesh_gray_frag_literals, 1, mesh_gray_frag_resources, 2, NULL, 0, false },
+-	{ 0x1FC5A4D173FAD328ull, 1584, mesh_instanced_vert_container, 428, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x1FC5A4D173FAD328ull, 1584, mesh_instanced_vert_instanced_container, 524, NULL, 0, mesh_instanced_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0xB8EB7D82A1283C2Cull, 820, mesh_uniform_frag_container, 252, NULL, 0, mesh_uniform_frag_resources, 2, NULL, 0, false },
+-	{ 0x30642BF0E52D0977ull, 1296, mesh_uniform_vert_container, 376, mesh_uniform_vert_literals, 1, mesh_uniform_vert_resources, 1, NULL, 0, false },
+-	{ 0x30642BF0E52D0977ull, 1296, mesh_uniform_vert_instanced_container, 484, mesh_uniform_vert_instanced_literals, 1, mesh_uniform_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x8E1048C2FD9C928Cull, 660, sprite_frag_container, 212, NULL, 0, sprite_frag_resources, 1, NULL, 0, false },
+-	{ 0xC861B7190B3BC534ull, 1120, sprite_vert_container, 324, sprite_vert_literals, 1, NULL, 0, NULL, 0, false },
+-	{ 0xC861B7190B3BC534ull, 1120, sprite_vert_instanced_container, 420, sprite_vert_instanced_literals, 1, sprite_vert_instanced_resources, 1, NULL, 0, true },
++	{ 0xA2D0D69A9CE841C6ull, 784, mesh_frag_container, 252, NULL, 0, mesh_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xCDE214766F4D8DE0ull, 1252, mesh_vert_container, 376, mesh_vert_literals, 1, mesh_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xCDE214766F4D8DE0ull, 1252, mesh_vert_instanced_container, 484, mesh_vert_instanced_literals, 1, mesh_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x33E8B01AEE5ADDECull, 1164, mesh_gray_frag_container, 332, mesh_gray_frag_literals, 1, mesh_gray_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x1FC5A4D173FAD328ull, 1584, mesh_instanced_vert_container, 428, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x1FC5A4D173FAD328ull, 1584, mesh_instanced_vert_instanced_container, 524, NULL, 0, mesh_instanced_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0xB8EB7D82A1283C2Cull, 820, mesh_uniform_frag_container, 252, NULL, 0, mesh_uniform_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x30642BF0E52D0977ull, 1296, mesh_uniform_vert_container, 376, mesh_uniform_vert_literals, 1, mesh_uniform_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x30642BF0E52D0977ull, 1296, mesh_uniform_vert_instanced_container, 484, mesh_uniform_vert_instanced_literals, 1, mesh_uniform_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x8E1048C2FD9C928Cull, 660, sprite_frag_container, 212, NULL, 0, sprite_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xC861B7190B3BC534ull, 1120, sprite_vert_container, 324, sprite_vert_literals, 1, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0xC861B7190B3BC534ull, 1120, sprite_vert_instanced_container, 420, sprite_vert_instanced_literals, 1, sprite_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
+ };
+ 
+ const V4xShaderBundle v4x_shader_bundle = { shaders, 12 };
+diff --git a/docs/SUPPORT.md b/docs/SUPPORT.md
+index b90c4219ef17a70d9e033db1f5fc6bf1e86611f3..b25dff03cf418a378f32611a37c6f9792ee43451 100644
+--- a/docs/SUPPORT.md
++++ b/docs/SUPPORT.md
+@@ -214,7 +214,9 @@ Some are there to refuse, as the features they need aren't reported. Each logs w
+   `maxPerStageDescriptorSamplers`: 16 samplers in each stage never fit, and with all 16 bindings the two stages share
+   26.
+ - Graphics pipelines, otherwise `VK_ERROR_FEATURE_NOT_PRESENT`:
+-  - a vertex and a fragment stage, entry point `main`, no specialization constants;
++  - a vertex and a fragment stage, entry point `main`; scalar `bool` and 32-bit `int`, `uint` and `float`
++    specialization constants, given as 4-byte values or taken from their SPIR-V defaults, each in a constant register
++    the layer writes when the pipeline is bound (xost:docs/xsc.md, "Interface conventions");
+   - bindings at the vertex's rate or the instance's, with strides a multiple of 4, up to 1020 bytes. An attribute at
+     the instance's rate is fetched at its instance's element, at its binding's stride, by the instanced vertex shader
+     such a pipeline takes (Shaders; xsdk:include/xsdk/shader.h, `per_instance`), its stream at the binding's start;
+diff --git a/include/vulkan4xenon.h b/include/vulkan4xenon.h
+index 6f2a4f2be2a9871a369fc2905cb08db01045daa6..90fc07eb868c3a34aaf634706278478a92a53af5 100644
+--- a/include/vulkan4xenon.h
++++ b/include/vulkan4xenon.h
+@@ -61,6 +61,20 @@ typedef struct {
+ 	uint8_t plane;
+ } V4xShaderClipPlane;
+ 
++enum {
++	V4X_SPECIALIZATION_BOOL,
++	V4X_SPECIALIZATION_INT,
++	V4X_SPECIALIZATION_UINT,
++	V4X_SPECIALIZATION_FLOAT,
++};
++
++typedef struct {
++	uint32_t reg;
++	uint32_t constant_id;
++	uint32_t type;
++	float default_value;
++} V4xShaderSpecialization;
++
+ typedef struct {
+ 	// FNV-1a over the SPIR-V's words, each taken as its four bytes low first, and the SPIR-V's size.
+ 	uint64_t spirv_hash;
+@@ -77,6 +91,9 @@ typedef struct {
+ 	// vertex shader that doesn't read gl_InstanceIndex (xost:docs/xsc.md, "Interface conventions"). Last, so a bundle
+ 	// written before it holds plain shaders alone.
+ 	bool instanced;
++	// Appended so shader bundles generated before specialization constants remain valid when rebuilt from source.
++	const V4xShaderSpecialization *specializations;
++	uint32_t specialization_count;
+ } V4xShader;
+ 
+ typedef struct {
+diff --git a/src/blit_shaders.c b/src/blit_shaders.c
+index aa34020721c07231db73166602cb72fe710adfe2..4a18a3c033dde750934261d60d35f9ad0ca687cf 100644
+--- a/src/blit_shaders.c
++++ b/src/blit_shaders.c
+@@ -434,15 +434,15 @@ static const V4xShaderResource v4x_depth_back_frag_resources[] = {
+ };
+ 
+ static const V4xShader shaders[] = {
+-	{ 0x9CC2214B327BA30Bull, 552, v4x_blit_frag_container, 208, NULL, 0, v4x_blit_frag_resources, 1, NULL, 0, false },
+-	{ 0x44C70BCFE37A5B64ull, 888, v4x_blit_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x44C70BCFE37A5B64ull, 888, v4x_blit_vert_instanced_container, 316, NULL, 0, v4x_blit_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0x0D2D54C08F4536F4ull, 884, v4x_blit_four_frag_container, 244, NULL, 0, v4x_blit_four_frag_resources, 1, NULL, 0, false },
+-	{ 0x284B7B9341DA5AE0ull, 1192, v4x_blit_region_vert_container, 308, NULL, 0, v4x_blit_region_vert_resources, 1, NULL, 0, false },
+-	{ 0x284B7B9341DA5AE0ull, 1192, v4x_blit_region_vert_instanced_container, 404, NULL, 0, v4x_blit_region_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x8C331896FB13A338ull, 496, v4x_clear_frag_container, 180, NULL, 0, v4x_clear_frag_resources, 1, NULL, 0, false },
+-	{ 0x33B1C76FBF0892AAull, 992, v4x_clear_four_frag_container, 348, NULL, 0, v4x_clear_four_frag_resources, 1, NULL, 0, false },
+-	{ 0xECFBFF99C693D8A3ull, 748, v4x_depth_back_frag_container, 220, NULL, 0, v4x_depth_back_frag_resources, 1, NULL, 0, false },
++	{ 0x9CC2214B327BA30Bull, 552, v4x_blit_frag_container, 208, NULL, 0, v4x_blit_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x44C70BCFE37A5B64ull, 888, v4x_blit_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x44C70BCFE37A5B64ull, 888, v4x_blit_vert_instanced_container, 316, NULL, 0, v4x_blit_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0x0D2D54C08F4536F4ull, 884, v4x_blit_four_frag_container, 244, NULL, 0, v4x_blit_four_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x284B7B9341DA5AE0ull, 1192, v4x_blit_region_vert_container, 308, NULL, 0, v4x_blit_region_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x284B7B9341DA5AE0ull, 1192, v4x_blit_region_vert_instanced_container, 404, NULL, 0, v4x_blit_region_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x8C331896FB13A338ull, 496, v4x_clear_frag_container, 180, NULL, 0, v4x_clear_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x33B1C76FBF0892AAull, 992, v4x_clear_four_frag_container, 348, NULL, 0, v4x_clear_four_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xECFBFF99C693D8A3ull, 748, v4x_depth_back_frag_container, 220, NULL, 0, v4x_depth_back_frag_resources, 1, NULL, 0, false, NULL, 0 },
+ };
+ 
+ const V4xShaderBundle v4x_blit_bundle = { shaders, 9 };
+diff --git a/src/objects.h b/src/objects.h
+index 03d6f1f56e7c10f0175e5001562e428f6d1a93fe..3e33eeba320283ffa16cf9086fd3903cc6209fe6 100644
+--- a/src/objects.h
++++ b/src/objects.h
+@@ -339,6 +339,11 @@ typedef struct {
+ 	uint32_t offset_bytes;
+ } ClipPlane;
+ 
++typedef struct {
++	uint32_t reg;
++	float value;
++} PipelineSpecialization;
++
+ // What each draw does with a resource, the draw plan's groups in order (Pipeline, plan): writes a push block's
+ // registers; loads a uniform block, or reads it on the CPU where it can't start a group; writes a comparison's weights;
+ // points a texture; and counts a loop.
+@@ -357,6 +362,10 @@ typedef struct {
+ 	XsdkShader pixel;
+ 	const V4xShader *vertex_source;
+ 	const V4xShader *pixel_source;
++	PipelineSpecialization *vertex_specializations;
++	uint32_t vertex_specialization_count;
++	PipelineSpecialization *pixel_specializations;
++	uint32_t pixel_specialization_count;
+ 	VertexStream streams[V4X_MAX_VERTEX_BINDINGS];
+ 	uint32_t stream_count;
+ 	VkViewport viewport;
+diff --git a/src/pipeline.c b/src/pipeline.c
+index 311e07b53819c42e7ea883459f57bfa5a8571557..684248f37af8b5e02ed3dc892cbf9108e08e8e66 100644
+--- a/src/pipeline.c
++++ b/src/pipeline.c
+@@ -85,28 +85,96 @@ static bool instance_rate(const VkPipelineVertexInputStateCreateInfo *input)
+ 	return false;
+ }
+ 
++static bool specialization_value(const V4xShaderSpecialization *spec, const VkSpecializationInfo *info, float *value)
++{
++	*value = spec->default_value;
++	if (!info)
++		return true;
++	if (info->mapEntryCount && !info->pMapEntries)
++		return false;
++	for (uint32_t i = 0; i < info->mapEntryCount; i++) {
++		const VkSpecializationMapEntry *const entry = &info->pMapEntries[i];
++		if (entry->constantID != spec->constant_id)
++			continue;
++		if (entry->size != sizeof(uint32_t) || entry->offset > info->dataSize ||
++			entry->size > info->dataSize - entry->offset || !info->pData)
++			return false;
++		const uint8_t *const data = info->pData;
++		if (spec->type == V4X_SPECIALIZATION_FLOAT) {
++			memcpy(value, data + entry->offset, sizeof *value);
++			return true;
++		}
++		if (spec->type == V4X_SPECIALIZATION_BOOL || spec->type == V4X_SPECIALIZATION_UINT) {
++			uint32_t raw;
++			memcpy(&raw, data + entry->offset, sizeof raw);
++			*value = spec->type == V4X_SPECIALIZATION_BOOL ? (raw ? 1.0f : 0.0f) : (float)raw;
++			return true;
++		}
++		if (spec->type == V4X_SPECIALIZATION_INT) {
++			int32_t raw;
++			memcpy(&raw, data + entry->offset, sizeof raw);
++			*value = (float)raw;
++			return true;
++		}
++		return false;
++	}
++	return true;
++}
++
++static VkResult copy_specializations(const VkAllocationCallbacks *allocator, const V4xShader *shader,
++	const VkSpecializationInfo *info, PipelineSpecialization **out, uint32_t *out_count)
++{
++	*out_count = shader->specialization_count;
++	if (!*out_count)
++		return VK_SUCCESS;
++	*out = v4x_host_alloc(allocator, *out_count * sizeof **out, VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
++	if (!*out)
++		return VK_ERROR_OUT_OF_HOST_MEMORY;
++	for (uint32_t i = 0; i < *out_count; i++) {
++		const V4xShaderSpecialization *const spec = &shader->specializations[i];
++		float value;
++		if (!specialization_value(spec, info, &value))
++			return v4x_host_unsupported("specialization values must match their 4-byte scalar type");
++		(*out)[i] = (PipelineSpecialization){ spec->reg, value };
++	}
++	return VK_SUCCESS;
++}
++
+ // A pipeline with a binding at the instance's rate takes its vertex shader's instanced variant (shader.c); one that
+ // reads gl_InstanceIndex is instanced already.
+-static VkResult find_stages(VkDevice device, const VkGraphicsPipelineCreateInfo *info, Pipeline *pipeline)
++static VkResult find_stages(VkDevice device, const VkGraphicsPipelineCreateInfo *info,
++	const VkAllocationCallbacks *allocator, Pipeline *pipeline)
+ {
+ 	const ShaderModule *vertex = NULL;
++	const VkSpecializationInfo *vertex_specialization = NULL;
++	const VkSpecializationInfo *pixel_specialization = NULL;
+ 	for (uint32_t i = 0; i < info->stageCount; i++) {
+ 		const VkPipelineShaderStageCreateInfo *const stage = &info->pStages[i];
+-		if (strcmp(stage->pName, "main") || stage->pSpecializationInfo)
+-			return v4x_host_unsupported("entry points other than main, and specialization constants");
++		if (strcmp(stage->pName, "main"))
++			return v4x_host_unsupported("entry points other than main");
+ 		const ShaderModule *const module = v4x_object(stage->module);
+-		if (stage->stage == VK_SHADER_STAGE_VERTEX_BIT)
++		if (stage->stage == VK_SHADER_STAGE_VERTEX_BIT) {
+ 			vertex = module;
+-		else if (stage->stage == VK_SHADER_STAGE_FRAGMENT_BIT)
++			vertex_specialization = stage->pSpecializationInfo;
++		} else if (stage->stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+ 			pipeline->pixel_source = module->shader;
+-		else
++			pixel_specialization = stage->pSpecializationInfo;
++		} else {
+ 			return v4x_host_unsupported("stages other than vertex and fragment");
++		}
+ 	}
+ 	if (!vertex || !pipeline->pixel_source)
+ 		return v4x_host_unsupported("pipelines without both a vertex and a fragment shader");
+ 	pipeline->vertex_source =
+ 		instance_rate(info->pVertexInputState) ? v4x_shader_instanced(device, vertex) : vertex->shader;
+-	return pipeline->vertex_source ? VK_SUCCESS : VK_ERROR_FEATURE_NOT_PRESENT;
++	if (!pipeline->vertex_source)
++		return VK_ERROR_FEATURE_NOT_PRESENT;
++	VkResult result = copy_specializations(allocator, pipeline->vertex_source, vertex_specialization,
++		&pipeline->vertex_specializations, &pipeline->vertex_specialization_count);
++	if (result == VK_SUCCESS)
++		result = copy_specializations(allocator, pipeline->pixel_source, pixel_specialization,
++			&pipeline->pixel_specializations, &pipeline->pixel_specialization_count);
++	return result;
+ }
+ 
+ // Each binding becomes the next stream; each attribute an element of the vertex shader's layout, one at the instance's
+@@ -363,6 +431,8 @@ static VkResult find_clip_planes(Pipeline *pipeline)
+ 
+ static void free_pipeline(const VkAllocationCallbacks *allocator, Pipeline *pipeline)
+ {
++	v4x_host_free(allocator, pipeline->vertex_specializations);
++	v4x_host_free(allocator, pipeline->pixel_specializations);
+ 	if (pipeline->vertex.microcode)
+ 		xsdk_shader_free(&pipeline->vertex);
+ 	if (pipeline->pixel.microcode)
+@@ -379,7 +449,7 @@ static VkResult create_pipeline(
+ 	const RenderPassSubpasses *const render_pass = v4x_object(info->renderPass);
+ 	VkResult result = v4x_pipeline_state(info, &render_pass->subpasses[info->subpass], pipeline);
+ 	if (result == VK_SUCCESS)
+-		result = find_stages(device, info, pipeline);
++		result = find_stages(device, info, allocator, pipeline);
+ 	const PipelineLayout *const layout = v4x_object(info->layout);
+ 	if (result == VK_SUCCESS)
+ 		result = gather_resources(layout, pipeline->vertex_source, true, pipeline);
+diff --git a/src/queue.c b/src/queue.c
+index 7dd343ade08fb9d5be10e6a6a55cafad0afda025..57d804679a14250a6acd728752e0c0c0b9dae43e 100644
+--- a/src/queue.c
++++ b/src/queue.c
+@@ -45,6 +45,7 @@ typedef struct {
+ 	const Pipeline *pipeline;
+ 	const V4xShader *vertex_literals;
+ 	const V4xShader *pixel_literals;
++	const Pipeline *specialization_pipeline;
+ 	VkViewport viewport;
+ 	VkRect2D scissor;
+ 	XsdkBlendState blends[V4X_MAX_COLOR_ATTACHMENTS];
+@@ -122,6 +123,17 @@ static void write_literals(const V4xShader *shader, bool vertex)
+ 	}
+ }
+ 
++static void write_specializations(const PipelineSpecialization *specializations, uint32_t count, bool vertex)
++{
++	for (uint32_t i = 0; i < count; i++) {
++		const float values[4] = { specializations[i].value, 0.0f, 0.0f, 0.0f };
++		if (vertex)
++			xsdk_gpu_set_vertex_constants(specializations[i].reg, values, 1);
++		else
++			xsdk_gpu_set_pixel_constants(specializations[i].reg, values, 1);
++	}
++}
++
+ // The first pixel whose centre a viewport edge at coordinate covers, or the one past the last.
+ static int32_t first_pixel(float coordinate)
+ {
+@@ -197,6 +209,10 @@ static void apply_pipeline(const Pipeline *pipeline, Replay *replay)
+ 		write_literals(pipeline->vertex_source, true);
+ 	if (changed(replay, &applied->pixel_literals, &pipeline->pixel_source, sizeof pipeline->pixel_source))
+ 		write_literals(pipeline->pixel_source, false);
++	if (changed(replay, &applied->specialization_pipeline, &pipeline, sizeof pipeline)) {
++		write_specializations(pipeline->vertex_specializations, pipeline->vertex_specialization_count, true);
++		write_specializations(pipeline->pixel_specializations, pipeline->pixel_specialization_count, false);
++	}
+ 	apply_viewport(pipeline, replay);
+ 	const uint32_t count = pipeline->blend_count;
+ 	const bool count_changed = changed(replay, &applied->blend_count, &count, sizeof count);
+diff --git a/src/shader.c b/src/shader.c
+index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982dbe406880a 100644
+--- a/src/shader.c
++++ b/src/shader.c
+@@ -30,9 +30,9 @@ enum {
+ 	MICROSECONDS_PER_SECOND = 1000000,
+ 	CACHE_PATH_BYTES = 256,
+ 	// "V4XS", and the layout of what follows it, which changes as V4xShader's parts do: 2 since clip planes, 3 since a
+-	// block loop's start and step, 4 since instanced variants.
++	// block loop's start and step, 4 since instanced variants, 5 since specialization constants.
+ 	CACHE_MAGIC = 0x56345853,
+-	CACHE_LAYOUT = 4,
++	CACHE_LAYOUT = 5,
+ 	// No container xost writes is near this; a file that says so is damaged.
+ 	MAX_CACHED_BYTES = 1024 * 1024,
+ 	FOLDER_MODE = 0777,
+@@ -49,6 +49,7 @@ typedef struct {
+ 	uint32_t literal_count;
+ 	uint32_t resource_count;
+ 	uint32_t clip_plane_count;
++	uint32_t specialization_count;
+ 	// Compiled with xost's instanced option, which the shader is kept under too.
+ 	uint32_t instanced;
+ } CacheHeader;
+@@ -131,7 +132,9 @@ static bool layer_takes(const XsdkXscShader *compiled)
+ 		const bool fixed =
+ 			need->kind == XSDK_XSC_FIXED_LOOP && need->regs <= V4X_MAX_LOOP_PASSES && need->reg < XSDK_LOOP_CONSTANTS;
+ 		const bool plane = need->kind == XSDK_XSC_CLIP_PLANE && need->reg <= MAX_RESOURCE_REGISTER;
+-		if (need->kind != XSDK_XSC_LITERAL && !loop && !fixed && !plane)
++		const bool specialization = need->kind == XSDK_XSC_SPECIALIZATION && need->reg <= MAX_RESOURCE_REGISTER &&
++			need->scalar_type >= XSDK_XSC_SPEC_BOOL && need->scalar_type <= XSDK_XSC_SPEC_FLOAT;
++		if (need->kind != XSDK_XSC_LITERAL && !loop && !fixed && !plane && !specialization)
+ 			return false;
+ 	}
+ 	for (size_t i = 0; i < compiled->resource_count; i++) {
+@@ -148,7 +151,8 @@ static bool layer_takes(const XsdkXscShader *compiled)
+ static size_t tail_bytes(const CacheHeader *sizes)
+ {
+ 	return (sizes->container_size_bytes + 3) / 4 * sizeof(uint32_t) + sizes->literal_count * sizeof(V4xShaderLiteral) +
+-		sizes->resource_count * sizeof(V4xShaderResource) + sizes->clip_plane_count * sizeof(V4xShaderClipPlane);
++		sizes->resource_count * sizeof(V4xShaderResource) + sizes->clip_plane_count * sizeof(V4xShaderClipPlane) +
++		sizes->specialization_count * sizeof(V4xShaderSpecialization);
+ }
+ 
+ // Where a shader's parts sit in its allocation, for whoever fills them.
+@@ -157,6 +161,7 @@ typedef struct {
+ 	V4xShaderLiteral *literals;
+ 	V4xShaderResource *resources;
+ 	V4xShaderClipPlane *clip_planes;
++	V4xShaderSpecialization *specializations;
+ } ShaderParts;
+ 
+ // A shader in one allocation, its parts pointing into the tail, which the caller fills.
+@@ -170,6 +175,7 @@ static V4xShader *new_shader(const VkAllocationCallbacks *allocator, const Cache
+ 	parts->literals = (V4xShaderLiteral *)(parts->container + (sizes->container_size_bytes + 3) / 4);
+ 	parts->resources = (V4xShaderResource *)(parts->literals + sizes->literal_count);
+ 	parts->clip_planes = (V4xShaderClipPlane *)(parts->resources + sizes->resource_count);
++	parts->specializations = (V4xShaderSpecialization *)(parts->clip_planes + sizes->clip_plane_count);
+ 	*shader = (V4xShader){ .spirv_hash = sizes->spirv_hash,
+ 		.spirv_size_bytes = sizes->spirv_size_bytes,
+ 		.container = parts->container,
+@@ -180,7 +186,9 @@ static V4xShader *new_shader(const VkAllocationCallbacks *allocator, const Cache
+ 		.resource_count = sizes->resource_count,
+ 		.clip_planes = parts->clip_planes,
+ 		.clip_plane_count = sizes->clip_plane_count,
+-		.instanced = sizes->instanced };
++		.instanced = sizes->instanced,
++		.specializations = parts->specializations,
++		.specialization_count = sizes->specialization_count };
+ 	return shader;
+ }
+ 
+@@ -188,7 +196,7 @@ static CacheHeader header_of(const V4xShader *shader)
+ {
+ 	return (CacheHeader){ CACHE_MAGIC, CACHE_LAYOUT, shader->spirv_hash, shader->spirv_size_bytes,
+ 		shader->container_size_bytes, shader->literal_count, shader->resource_count, shader->clip_plane_count,
+-		shader->instanced };
++		shader->specialization_count, shader->instanced };
+ }
+ 
+ static uint32_t needs_of(const XsdkXscShader *compiled, XsdkXscNeedKind kind)
+@@ -199,6 +207,22 @@ static uint32_t needs_of(const XsdkXscShader *compiled, XsdkXscNeedKind kind)
+ 	return count;
+ }
+ 
++static uint32_t specialization_type(XsdkXscSpecializationType type)
++{
++	switch (type) {
++	case XSDK_XSC_SPEC_BOOL:
++		return V4X_SPECIALIZATION_BOOL;
++	case XSDK_XSC_SPEC_INT:
++		return V4X_SPECIALIZATION_INT;
++	case XSDK_XSC_SPEC_UINT:
++		return V4X_SPECIALIZATION_UINT;
++	case XSDK_XSC_SPEC_FLOAT:
++		return V4X_SPECIALIZATION_FLOAT;
++	default:
++		return UINT32_MAX;
++	}
++}
++
+ // The literals, then the resources, each loop's count among them after the blocks and samplers, then the clip planes,
+ // as the bundle has them.
+ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const XsdkXscShader *compiled, uint64_t hash,
+@@ -208,7 +232,7 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
+ 		needs_of(compiled, XSDK_XSC_LITERAL),
+ 		(uint32_t)compiled->resource_count + needs_of(compiled, XSDK_XSC_BLOCK_LOOP) +
+ 			needs_of(compiled, XSDK_XSC_FIXED_LOOP),
+-		needs_of(compiled, XSDK_XSC_CLIP_PLANE), instanced };
++		needs_of(compiled, XSDK_XSC_CLIP_PLANE), needs_of(compiled, XSDK_XSC_SPECIALIZATION), instanced };
+ 	ShaderParts parts;
+ 	V4xShader *const shader = new_shader(allocator, &sizes, &parts);
+ 	if (!shader)
+@@ -222,6 +246,7 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
+ 	uint32_t literal = 0;
+ 	uint32_t resource = (uint32_t)compiled->resource_count;
+ 	uint32_t plane = 0;
++	uint32_t specialization = 0;
+ 	for (size_t i = 0; i < compiled->need_count; i++) {
+ 		const XsdkXscNeed *const need = &compiled->needs[i];
+ 		if (need->kind == XSDK_XSC_BLOCK_LOOP) {
+@@ -240,6 +265,11 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
+ 			parts.clip_planes[plane++] = (V4xShaderClipPlane){ (uint16_t)need->reg, (uint8_t)need->regs };
+ 			continue;
+ 		}
++		if (need->kind == XSDK_XSC_SPECIALIZATION) {
++			parts.specializations[specialization++] = (V4xShaderSpecialization){ need->reg, need->constant_id,
++				specialization_type(need->scalar_type), (float)need->default_value };
++			continue;
++		}
+ 		parts.literals[literal++] = (V4xShaderLiteral){ need->reg,
+ 			{ (float)need->value[0], (float)need->value[1], (float)need->value[2], (float)need->value[3] } };
+ 	}
+@@ -297,7 +327,7 @@ static V4xShader *read_cached(VkDevice device, uint64_t hash, uint32_t size_byte
+ 		header.layout == CACHE_LAYOUT && header.spirv_hash == hash && header.spirv_size_bytes == size_bytes &&
+ 		header.instanced == instanced && header.container_size_bytes < MAX_CACHED_BYTES &&
+ 		header.literal_count < MAX_CACHED_BYTES && header.resource_count < MAX_CACHED_BYTES &&
+-		header.clip_plane_count < MAX_CACHED_BYTES;
++		header.clip_plane_count < MAX_CACHED_BYTES && header.specialization_count < MAX_CACHED_BYTES;
+ 	const size_t tail = sound ? tail_bytes(&header) : 0;
+ 	ShaderParts parts;
+ 	V4xShader *shader = sound && (size_t)info.st_size == sizeof header + tail
+diff --git a/tests/harness.h b/tests/harness.h
+index 002da85ca423feab0e13ef2c816e0a2b6b4026d1..69fa6fd7625b4e25e10e1927901267940a306b12 100644
+--- a/tests/harness.h
++++ b/tests/harness.h
+@@ -68,6 +68,8 @@ typedef struct {
+ 	const VkVertexInputAttributeDescription *attributes;
+ 	uint32_t attribute_count;
+ 	VkPipelineLayout layout;
++	const VkSpecializationInfo *vertex_specialization;
++	const VkSpecializationInfo *fragment_specialization;
+ 	// Each NULL for triangle lists, no culling, no depth or stencil, and no blending with every channel written.
+ 	const VkPipelineInputAssemblyStateCreateInfo *assembly;
+ 	const VkPipelineRasterizationStateCreateInfo *raster;
+diff --git a/tests/harness_scene.c b/tests/harness_scene.c
+index bb1749544975dea3fc2166bbb808726e80562504..68d0f52fcb7819c919185035dd7cd09c22742309 100644
+--- a/tests/harness_scene.c
++++ b/tests/harness_scene.c
+@@ -203,11 +203,13 @@ static VkResult create_pipeline(const Harness *harness, const HarnessPipeline *s
+ 		{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+ 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
+ 			.module = modules[0],
+-			.pName = "main" },
++			.pName = "main",
++			.pSpecializationInfo = spec->vertex_specialization },
+ 		{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+ 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+ 			.module = modules[1],
+-			.pName = "main" },
++			.pName = "main",
++			.pSpecializationInfo = spec->fragment_specialization },
+ 	};
+ 	const VkGraphicsPipelineCreateInfo info = {
+ 		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+diff --git a/tests/main.c b/tests/main.c
+index 7e4fa9a9bb0f215f39853a529e9bc43b37dd2506..93b59a838d6c0f6908666b3af1d0fac073e5d216 100644
+--- a/tests/main.c
++++ b/tests/main.c
+@@ -30,6 +30,7 @@ int main(void)
+ 		test_commands(&harness);
+ 		test_copies(&harness);
+ 		test_triangle(&harness);
++		test_specialization(&harness);
+ 		test_packed_colour(&harness);
+ 		test_vertex_formats(&harness);
+ 		test_texture(&harness);
+diff --git a/tests/shaders.c b/tests/shaders.c
+index 02c89be53860a8a3018d579ca4df551ee63999da..a4747e532bf65bc158ee987b35dd44805dbf25ad 100644
+--- a/tests/shaders.c
++++ b/tests/shaders.c
+@@ -13114,119 +13114,119 @@ static const V4xShaderResource volume_frag_resources[] = {
+ };
+ 
+ static const V4xShader shaders[] = {
+-	{ 0x0C45B38CC0E62577ull, 1448, aurora_attr_defaults_frag_container, 272, NULL, 0, aurora_attr_defaults_frag_resources, 1, NULL, 0, false },
+-	{ 0xE1E4E34C5F4DAB7Eull, 5364, aurora_attr_defaults_vert_container, 1968, aurora_attr_defaults_vert_literals, 7, aurora_attr_defaults_vert_resources, 2, NULL, 0, false },
+-	{ 0xE1E4E34C5F4DAB7Eull, 5364, aurora_attr_defaults_vert_instanced_container, 2064, aurora_attr_defaults_vert_instanced_literals, 7, aurora_attr_defaults_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x38092540AA6AC532ull, 1564, aurora_emboss_frag_container, 276, NULL, 0, aurora_emboss_frag_resources, 1, NULL, 0, false },
+-	{ 0xF2BDD2F9F93C7F3Eull, 6992, aurora_emboss_vert_container, 2312, aurora_emboss_vert_literals, 5, aurora_emboss_vert_resources, 3, NULL, 0, false },
+-	{ 0xF2BDD2F9F93C7F3Eull, 6992, aurora_emboss_vert_instanced_container, 2408, aurora_emboss_vert_instanced_literals, 5, aurora_emboss_vert_instanced_resources, 4, NULL, 0, true },
+-	{ 0x0C45B38CC0E62577ull, 1448, aurora_texgen_binormal_frag_container, 272, NULL, 0, aurora_texgen_binormal_frag_resources, 1, NULL, 0, false },
+-	{ 0x75BF8925CF7ADF00ull, 5572, aurora_texgen_binormal_vert_container, 1856, aurora_texgen_binormal_vert_literals, 5, aurora_texgen_binormal_vert_resources, 2, NULL, 0, false },
+-	{ 0x75BF8925CF7ADF00ull, 5572, aurora_texgen_binormal_vert_instanced_container, 1964, aurora_texgen_binormal_vert_instanced_literals, 5, aurora_texgen_binormal_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x64FD54536399331Eull, 1964, aurora_texgen_prior_frag_container, 300, NULL, 0, aurora_texgen_prior_frag_resources, 1, NULL, 0, false },
+-	{ 0xC969A46B8E9C9ED5ull, 6564, aurora_texgen_prior_vert_container, 2172, aurora_texgen_prior_vert_literals, 5, aurora_texgen_prior_vert_resources, 2, NULL, 0, false },
+-	{ 0xC969A46B8E9C9ED5ull, 6564, aurora_texgen_prior_vert_instanced_container, 2268, aurora_texgen_prior_vert_instanced_literals, 5, aurora_texgen_prior_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x1D7185F586DDB1F9ull, 1448, aurora_texgen_prior_inline_frag_container, 272, NULL, 0, aurora_texgen_prior_inline_frag_resources, 1, NULL, 0, false },
+-	{ 0x7637225C72D6469Full, 5552, aurora_texgen_prior_inline_vert_container, 1856, aurora_texgen_prior_inline_vert_literals, 5, aurora_texgen_prior_inline_vert_resources, 2, NULL, 0, false },
+-	{ 0x7637225C72D6469Full, 5552, aurora_texgen_prior_inline_vert_instanced_container, 1964, aurora_texgen_prior_inline_vert_instanced_literals, 5, aurora_texgen_prior_inline_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0xEC7EC80B5C762FF5ull, 1768, aurora_texgen_q_zero_frag_container, 468, aurora_texgen_q_zero_frag_literals, 2, aurora_texgen_q_zero_frag_resources, 1, NULL, 0, false },
+-	{ 0xF359F8C65320221Bull, 6056, aurora_texgen_q_zero_vert_container, 2088, aurora_texgen_q_zero_vert_literals, 6, aurora_texgen_q_zero_vert_resources, 2, NULL, 0, false },
+-	{ 0xF359F8C65320221Bull, 6056, aurora_texgen_q_zero_vert_instanced_container, 2196, aurora_texgen_q_zero_vert_instanced_literals, 6, aurora_texgen_q_zero_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x0C45B38CC0E62577ull, 1448, aurora_texgen_tangent_frag_container, 272, NULL, 0, aurora_texgen_tangent_frag_resources, 1, NULL, 0, false },
+-	{ 0x2DA148201D6F452Eull, 5572, aurora_texgen_tangent_vert_container, 1856, aurora_texgen_tangent_vert_literals, 5, aurora_texgen_tangent_vert_resources, 2, NULL, 0, false },
+-	{ 0x2DA148201D6F452Eull, 5572, aurora_texgen_tangent_vert_instanced_container, 1964, aurora_texgen_tangent_vert_instanced_literals, 5, aurora_texgen_tangent_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0xEC7EC80B5C762FF5ull, 1768, aurora_texgen_zero_frag_container, 468, aurora_texgen_zero_frag_literals, 2, aurora_texgen_zero_frag_resources, 1, NULL, 0, false },
+-	{ 0x92C3A31A09988B0Eull, 5896, aurora_texgen_zero_vert_container, 2100, aurora_texgen_zero_vert_literals, 7, aurora_texgen_zero_vert_resources, 2, NULL, 0, false },
+-	{ 0x92C3A31A09988B0Eull, 5896, aurora_texgen_zero_vert_instanced_container, 2208, aurora_texgen_zero_vert_instanced_literals, 7, aurora_texgen_zero_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0xD18C2D3E71449310ull, 3944, aurora_ztex_add_u24_frag_container, 1564, aurora_ztex_add_u24_frag_literals, 10, aurora_ztex_add_u24_frag_resources, 2, NULL, 0, false },
+-	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u24_vert_container, 1796, aurora_ztex_add_u24_vert_literals, 5, aurora_ztex_add_u24_vert_resources, 2, NULL, 0, false },
+-	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u24_vert_instanced_container, 1904, aurora_ztex_add_u24_vert_instanced_literals, 5, aurora_ztex_add_u24_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x42AB55CCBD1849C0ull, 3780, aurora_ztex_add_u8_frag_container, 1448, aurora_ztex_add_u8_frag_literals, 9, aurora_ztex_add_u8_frag_resources, 2, NULL, 0, false },
+-	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u8_vert_container, 1796, aurora_ztex_add_u8_vert_literals, 5, aurora_ztex_add_u8_vert_resources, 2, NULL, 0, false },
+-	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u8_vert_instanced_container, 1904, aurora_ztex_add_u8_vert_instanced_literals, 5, aurora_ztex_add_u8_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0xD557F687405F60C4ull, 2452, aurora_ztex_replace_u24_frag_container, 896, aurora_ztex_replace_u24_frag_literals, 9, aurora_ztex_replace_u24_frag_resources, 1, NULL, 0, false },
+-	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u24_vert_container, 1760, aurora_ztex_replace_u24_vert_literals, 5, aurora_ztex_replace_u24_vert_resources, 2, NULL, 0, false },
+-	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u24_vert_instanced_container, 1856, aurora_ztex_replace_u24_vert_instanced_literals, 5, aurora_ztex_replace_u24_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x2FB5F74A82B09380ull, 2256, aurora_ztex_replace_u8_frag_container, 748, aurora_ztex_replace_u8_frag_literals, 7, aurora_ztex_replace_u8_frag_resources, 1, NULL, 0, false },
+-	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u8_vert_container, 1760, aurora_ztex_replace_u8_vert_literals, 5, aurora_ztex_replace_u8_vert_resources, 2, NULL, 0, false },
+-	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u8_vert_instanced_container, 1856, aurora_ztex_replace_u8_vert_instanced_literals, 5, aurora_ztex_replace_u8_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x38D6F29419EFA49Dull, 880, band_frag_container, 300, band_frag_literals, 1, band_frag_resources, 1, NULL, 0, false },
+-	{ 0x8C126388C0AD5441ull, 2304, branch_data_vert_container, 904, branch_data_vert_literals, 5, branch_data_vert_resources, 1, NULL, 0, false },
+-	{ 0x8C126388C0AD5441ull, 2304, branch_data_vert_instanced_container, 1000, branch_data_vert_instanced_literals, 5, branch_data_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x2CD83348DE8A86FCull, 1768, branch_uniform_vert_container, 612, branch_uniform_vert_literals, 1, branch_uniform_vert_resources, 1, NULL, 0, false },
+-	{ 0x2CD83348DE8A86FCull, 1768, branch_uniform_vert_instanced_container, 708, branch_uniform_vert_instanced_literals, 1, branch_uniform_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x21A87C82AC2A8991ull, 1232, clip_vert_container, 316, NULL, 0, clip_vert_resources, 1, clip_vert_clip_planes, 1, false },
+-	{ 0x21A87C82AC2A8991ull, 1232, clip_vert_instanced_container, 424, NULL, 0, clip_vert_instanced_resources, 2, clip_vert_instanced_clip_planes, 1, true },
+-	{ 0x9DDE770D1BE997EFull, 1632, clip_planes_vert_container, 328, NULL, 0, clip_planes_vert_resources, 2, clip_planes_vert_clip_planes, 2, false },
+-	{ 0x9DDE770D1BE997EFull, 1632, clip_planes_vert_instanced_container, 436, NULL, 0, clip_planes_vert_instanced_resources, 3, clip_planes_vert_instanced_clip_planes, 2, true },
+-	{ 0x573E0B83B3FA03FFull, 840, coord_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x573E0B83B3FA03FFull, 840, coord_vert_instanced_container, 316, NULL, 0, coord_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0x6AB582272D68711Full, 584, cube_frag_container, 288, cube_frag_literals, 1, cube_frag_resources, 1, NULL, 0, false },
+-	{ 0x3ECFF9CE3367CC96ull, 780, depth_before_frag_container, 420, depth_before_frag_literals, 5, NULL, 0, NULL, 0, false },
+-	{ 0x280D706D52BC127Dull, 756, depth_if_frag_container, 320, depth_if_frag_literals, 3, NULL, 0, NULL, 0, false },
+-	{ 0xECD09D10AE23676Dull, 656, displace_frag_container, 212, NULL, 0, displace_frag_resources, 1, NULL, 0, false },
+-	{ 0xD2D592A0F060832Full, 1752, displace_vert_container, 524, displace_vert_literals, 1, displace_vert_resources, 2, NULL, 0, false },
+-	{ 0xD2D592A0F060832Full, 1752, displace_vert_instanced_container, 632, displace_vert_instanced_literals, 1, displace_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x0303678D7C70F7F2ull, 856, facing_frag_container, 276, facing_frag_literals, 1, facing_frag_resources, 1, NULL, 0, false },
+-	{ 0x2B42E465D48FF44Aull, 1164, facing_vert_container, 304, NULL, 0, facing_vert_resources, 1, NULL, 0, false },
+-	{ 0x2B42E465D48FF44Aull, 1164, facing_vert_instanced_container, 400, NULL, 0, facing_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x4A771FE49315AB3Eull, 660, facing_discard_frag_container, 284, facing_discard_frag_literals, 1, facing_discard_frag_resources, 1, NULL, 0, false },
+-	{ 0xAE3F48293E2BB78Eull, 900, format_frag_container, 308, NULL, 0, format_frag_resources, 2, NULL, 0, false },
+-	{ 0x2811FA6FAEFD76CBull, 1308, format_vert_container, 368, NULL, 0, format_vert_resources, 1, NULL, 0, false },
+-	{ 0x2811FA6FAEFD76CBull, 1308, format_vert_instanced_container, 464, NULL, 0, format_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x88F91C77EB1BEF4Dull, 1060, four_targets_frag_container, 360, NULL, 0, four_targets_frag_resources, 1, NULL, 0, false },
+-	{ 0xB0EBC892B5474B03ull, 612, high_block_frag_container, 180, NULL, 0, high_block_frag_resources, 1, NULL, 0, false },
+-	{ 0x76D6EB5C59364543ull, 1704, instance_grid_vert_container, 804, instance_grid_vert_literals, 7, instance_grid_vert_resources, 1, NULL, 0, false },
+-	{ 0xFF8CAE1C756E4C8Bull, 1508, instanced_vert_container, 628, instanced_vert_literals, 4, instanced_vert_resources, 1, NULL, 0, false },
+-	{ 0x4AE4ADDA5CE226F9ull, 1264, instanced_places_vert_container, 484, instanced_places_vert_literals, 4, NULL, 0, NULL, 0, false },
+-	{ 0x4AE4ADDA5CE226F9ull, 1264, instanced_places_vert_instanced_container, 592, instanced_places_vert_instanced_literals, 4, instanced_places_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0x241118DBBCA94D61ull, 1020, lod_bands_vert_container, 256, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x241118DBBCA94D61ull, 1020, lod_bands_vert_instanced_container, 352, NULL, 0, lod_bands_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0xF00B7F62009B0DD2ull, 760, lod_bias_frag_container, 304, lod_bias_frag_literals, 1, lod_bias_frag_resources, 1, NULL, 0, false },
+-	{ 0xB9F565A23D4F158Full, 760, lod_computed_frag_container, 304, lod_computed_frag_literals, 1, lod_computed_frag_resources, 1, NULL, 0, false },
+-	{ 0x6EEAA8532FB6A3ADull, 896, lod_constant_frag_container, 384, lod_constant_frag_literals, 2, lod_constant_frag_resources, 1, NULL, 0, false },
+-	{ 0x3D85E4F7B11AAE8Dull, 972, lod_gradients_frag_container, 488, lod_gradients_frag_literals, 3, lod_gradients_frag_resources, 1, NULL, 0, false },
+-	{ 0x9B171C25D82E0822ull, 2636, loop_break_frag_container, 5736, loop_break_frag_literals, 12, loop_break_frag_resources, 1, NULL, 0, false },
+-	{ 0xB99B4DB70B339FE2ull, 1344, loop_count_frag_container, 412, loop_count_frag_literals, 1, loop_count_frag_resources, 2, NULL, 0, false },
+-	{ 0x70A6A3B4021B20DDull, 2288, loop_count_vert_container, 708, loop_count_vert_literals, 1, loop_count_vert_resources, 2, NULL, 0, false },
+-	{ 0x70A6A3B4021B20DDull, 2288, loop_count_vert_instanced_container, 804, loop_count_vert_instanced_literals, 1, loop_count_vert_instanced_resources, 3, NULL, 0, true },
+-	{ 0x7A663624A7FF0167ull, 2696, loop_count_break_frag_container, 1348, loop_count_break_frag_literals, 7, loop_count_break_frag_resources, 2, NULL, 0, false },
+-	{ 0xAF2AEF463834CBD3ull, 2240, loop_count_if_frag_container, 852, loop_count_if_frag_literals, 5, loop_count_if_frag_resources, 2, NULL, 0, false },
+-	{ 0x8686F55DDF3132A7ull, 1560, loop_data_frag_container, 840, loop_data_frag_literals, 6, loop_data_frag_resources, 2, NULL, 0, false },
+-	{ 0x47C01916C0D26C30ull, 1644, loop_if_frag_container, 1156, loop_if_frag_literals, 6, loop_if_frag_resources, 1, NULL, 0, false },
+-	{ 0x94A5578130748F1Bull, 3280, loop_nest_frag_container, 1720, loop_nest_frag_literals, 7, loop_nest_frag_resources, 3, NULL, 0, false },
+-	{ 0xED07CA059DBC3E24ull, 2996, loop_sample_frag_container, 1680, loop_sample_frag_literals, 12, loop_sample_frag_resources, 2, NULL, 0, false },
+-	{ 0xF411F53BD9DBFBDCull, 1572, loop_steps_frag_container, 744, loop_steps_frag_literals, 5, loop_steps_frag_resources, 3, NULL, 0, false },
+-	{ 0x09F949B4AAA9B751ull, 1588, loop_uniform_if_frag_container, 1076, loop_uniform_if_frag_literals, 3, loop_uniform_if_frag_resources, 1, NULL, 0, false },
+-	{ 0x713CFD6FB43D7BB6ull, 2576, many_samplers_frag_container, 1484, many_samplers_frag_literals, 1, many_samplers_frag_resources, 16, NULL, 0, false },
+-	{ 0xD059818F7A3C789Dull, 3276, many_samplers_vert_container, 1328, many_samplers_vert_literals, 1, many_samplers_vert_resources, 16, NULL, 0, false },
+-	{ 0xD059818F7A3C789Dull, 3276, many_samplers_vert_instanced_container, 1436, many_samplers_vert_instanced_literals, 1, many_samplers_vert_instanced_resources, 17, NULL, 0, true },
+-	{ 0x5A2BECEEFADE12C1ull, 3132, many_samplers_15_vert_container, 1260, many_samplers_15_vert_literals, 1, many_samplers_15_vert_resources, 15, NULL, 0, false },
+-	{ 0x5A2BECEEFADE12C1ull, 3132, many_samplers_15_vert_instanced_container, 1368, many_samplers_15_vert_instanced_literals, 1, many_samplers_15_vert_instanced_resources, 16, NULL, 0, true },
+-	{ 0x7FE8FDDA40D6F24Full, 1716, matrix_index_vert_container, 640, matrix_index_vert_literals, 2, matrix_index_vert_resources, 1, NULL, 0, false },
+-	{ 0x7FE8FDDA40D6F24Full, 1716, matrix_index_vert_instanced_container, 736, matrix_index_vert_instanced_literals, 2, matrix_index_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x3801975376C88E87ull, 1064, point_vert_container, 272, NULL, 0, point_vert_resources, 1, NULL, 0, false },
+-	{ 0x3801975376C88E87ull, 1064, point_vert_instanced_container, 380, NULL, 0, point_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0xE0000D7993864FE5ull, 496, point_coord_frag_container, 172, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x0B479C4C6E0FB60Full, 496, push_frag_container, 180, NULL, 0, push_frag_resources, 1, NULL, 0, false },
+-	{ 0x65B9D40C8193B5E1ull, 1020, push_vert_container, 272, NULL, 0, push_vert_resources, 1, NULL, 0, false },
+-	{ 0x65B9D40C8193B5E1ull, 1020, push_vert_instanced_container, 380, NULL, 0, push_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x2C19078560792479ull, 784, scaled_frag_container, 252, NULL, 0, scaled_frag_resources, 2, NULL, 0, false },
+-	{ 0x4E3BA1F5CB6ACE4Cull, 640, shadow_frag_container, 316, NULL, 0, shadow_frag_resources, 2, NULL, 0, false },
+-	{ 0xF6F8C61514FAA97Cull, 556, texture_frag_container, 208, NULL, 0, texture_frag_resources, 1, NULL, 0, false },
+-	{ 0x44C70BCFE37A5B64ull, 888, texture_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x44C70BCFE37A5B64ull, 888, texture_vert_instanced_container, 316, NULL, 0, texture_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0x58184EA43D98582Cull, 372, triangle_frag_container, 140, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x1497DA5509A7A8C3ull, 840, triangle_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false },
+-	{ 0x1497DA5509A7A8C3ull, 840, triangle_vert_instanced_container, 316, NULL, 0, triangle_vert_instanced_resources, 1, NULL, 0, true },
+-	{ 0x8B66809442D981CCull, 632, uniform_frag_container, 184, NULL, 0, uniform_frag_resources, 1, NULL, 0, false },
+-	{ 0xA5689CD33A8F3B42ull, 1172, uniform_vert_container, 344, NULL, 0, uniform_vert_resources, 1, NULL, 0, false },
+-	{ 0xA5689CD33A8F3B42ull, 1172, uniform_vert_instanced_container, 440, NULL, 0, uniform_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x176210E07BE84ED8ull, 1428, vertex_alpha_vert_container, 464, NULL, 0, vertex_alpha_vert_resources, 1, NULL, 0, false },
+-	{ 0x176210E07BE84ED8ull, 1428, vertex_alpha_vert_instanced_container, 560, NULL, 0, vertex_alpha_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_container, 448, NULL, 0, vertex_format_vert_resources, 1, NULL, 0, false },
+-	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_instanced_container, 544, NULL, 0, vertex_format_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0xD4A7E8C9F4301714ull, 588, volume_frag_container, 208, NULL, 0, volume_frag_resources, 1, NULL, 0, false },
++	{ 0x0C45B38CC0E62577ull, 1448, aurora_attr_defaults_frag_container, 272, NULL, 0, aurora_attr_defaults_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xE1E4E34C5F4DAB7Eull, 5364, aurora_attr_defaults_vert_container, 1968, aurora_attr_defaults_vert_literals, 7, aurora_attr_defaults_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xE1E4E34C5F4DAB7Eull, 5364, aurora_attr_defaults_vert_instanced_container, 2064, aurora_attr_defaults_vert_instanced_literals, 7, aurora_attr_defaults_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x38092540AA6AC532ull, 1564, aurora_emboss_frag_container, 276, NULL, 0, aurora_emboss_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xF2BDD2F9F93C7F3Eull, 6992, aurora_emboss_vert_container, 2312, aurora_emboss_vert_literals, 5, aurora_emboss_vert_resources, 3, NULL, 0, false, NULL, 0 },
++	{ 0xF2BDD2F9F93C7F3Eull, 6992, aurora_emboss_vert_instanced_container, 2408, aurora_emboss_vert_instanced_literals, 5, aurora_emboss_vert_instanced_resources, 4, NULL, 0, true, NULL, 0 },
++	{ 0x0C45B38CC0E62577ull, 1448, aurora_texgen_binormal_frag_container, 272, NULL, 0, aurora_texgen_binormal_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x75BF8925CF7ADF00ull, 5572, aurora_texgen_binormal_vert_container, 1856, aurora_texgen_binormal_vert_literals, 5, aurora_texgen_binormal_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x75BF8925CF7ADF00ull, 5572, aurora_texgen_binormal_vert_instanced_container, 1964, aurora_texgen_binormal_vert_instanced_literals, 5, aurora_texgen_binormal_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x64FD54536399331Eull, 1964, aurora_texgen_prior_frag_container, 300, NULL, 0, aurora_texgen_prior_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xC969A46B8E9C9ED5ull, 6564, aurora_texgen_prior_vert_container, 2172, aurora_texgen_prior_vert_literals, 5, aurora_texgen_prior_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xC969A46B8E9C9ED5ull, 6564, aurora_texgen_prior_vert_instanced_container, 2268, aurora_texgen_prior_vert_instanced_literals, 5, aurora_texgen_prior_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x1D7185F586DDB1F9ull, 1448, aurora_texgen_prior_inline_frag_container, 272, NULL, 0, aurora_texgen_prior_inline_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x7637225C72D6469Full, 5552, aurora_texgen_prior_inline_vert_container, 1856, aurora_texgen_prior_inline_vert_literals, 5, aurora_texgen_prior_inline_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x7637225C72D6469Full, 5552, aurora_texgen_prior_inline_vert_instanced_container, 1964, aurora_texgen_prior_inline_vert_instanced_literals, 5, aurora_texgen_prior_inline_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0xEC7EC80B5C762FF5ull, 1768, aurora_texgen_q_zero_frag_container, 468, aurora_texgen_q_zero_frag_literals, 2, aurora_texgen_q_zero_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xF359F8C65320221Bull, 6056, aurora_texgen_q_zero_vert_container, 2088, aurora_texgen_q_zero_vert_literals, 6, aurora_texgen_q_zero_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xF359F8C65320221Bull, 6056, aurora_texgen_q_zero_vert_instanced_container, 2196, aurora_texgen_q_zero_vert_instanced_literals, 6, aurora_texgen_q_zero_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x0C45B38CC0E62577ull, 1448, aurora_texgen_tangent_frag_container, 272, NULL, 0, aurora_texgen_tangent_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2DA148201D6F452Eull, 5572, aurora_texgen_tangent_vert_container, 1856, aurora_texgen_tangent_vert_literals, 5, aurora_texgen_tangent_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x2DA148201D6F452Eull, 5572, aurora_texgen_tangent_vert_instanced_container, 1964, aurora_texgen_tangent_vert_instanced_literals, 5, aurora_texgen_tangent_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0xEC7EC80B5C762FF5ull, 1768, aurora_texgen_zero_frag_container, 468, aurora_texgen_zero_frag_literals, 2, aurora_texgen_zero_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x92C3A31A09988B0Eull, 5896, aurora_texgen_zero_vert_container, 2100, aurora_texgen_zero_vert_literals, 7, aurora_texgen_zero_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x92C3A31A09988B0Eull, 5896, aurora_texgen_zero_vert_instanced_container, 2208, aurora_texgen_zero_vert_instanced_literals, 7, aurora_texgen_zero_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0xD18C2D3E71449310ull, 3944, aurora_ztex_add_u24_frag_container, 1564, aurora_ztex_add_u24_frag_literals, 10, aurora_ztex_add_u24_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u24_vert_container, 1796, aurora_ztex_add_u24_vert_literals, 5, aurora_ztex_add_u24_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u24_vert_instanced_container, 1904, aurora_ztex_add_u24_vert_instanced_literals, 5, aurora_ztex_add_u24_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x42AB55CCBD1849C0ull, 3780, aurora_ztex_add_u8_frag_container, 1448, aurora_ztex_add_u8_frag_literals, 9, aurora_ztex_add_u8_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u8_vert_container, 1796, aurora_ztex_add_u8_vert_literals, 5, aurora_ztex_add_u8_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xA0D49F67EFAF0AB4ull, 5412, aurora_ztex_add_u8_vert_instanced_container, 1904, aurora_ztex_add_u8_vert_instanced_literals, 5, aurora_ztex_add_u8_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0xD557F687405F60C4ull, 2452, aurora_ztex_replace_u24_frag_container, 896, aurora_ztex_replace_u24_frag_literals, 9, aurora_ztex_replace_u24_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u24_vert_container, 1760, aurora_ztex_replace_u24_vert_literals, 5, aurora_ztex_replace_u24_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u24_vert_instanced_container, 1856, aurora_ztex_replace_u24_vert_instanced_literals, 5, aurora_ztex_replace_u24_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x2FB5F74A82B09380ull, 2256, aurora_ztex_replace_u8_frag_container, 748, aurora_ztex_replace_u8_frag_literals, 7, aurora_ztex_replace_u8_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u8_vert_container, 1760, aurora_ztex_replace_u8_vert_literals, 5, aurora_ztex_replace_u8_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x2AFDD1D9D1C01324ull, 5300, aurora_ztex_replace_u8_vert_instanced_container, 1856, aurora_ztex_replace_u8_vert_instanced_literals, 5, aurora_ztex_replace_u8_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x38D6F29419EFA49Dull, 880, band_frag_container, 300, band_frag_literals, 1, band_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x8C126388C0AD5441ull, 2304, branch_data_vert_container, 904, branch_data_vert_literals, 5, branch_data_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x8C126388C0AD5441ull, 2304, branch_data_vert_instanced_container, 1000, branch_data_vert_instanced_literals, 5, branch_data_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x2CD83348DE8A86FCull, 1768, branch_uniform_vert_container, 612, branch_uniform_vert_literals, 1, branch_uniform_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2CD83348DE8A86FCull, 1768, branch_uniform_vert_instanced_container, 708, branch_uniform_vert_instanced_literals, 1, branch_uniform_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x21A87C82AC2A8991ull, 1232, clip_vert_container, 316, NULL, 0, clip_vert_resources, 1, clip_vert_clip_planes, 1, false, NULL, 0 },
++	{ 0x21A87C82AC2A8991ull, 1232, clip_vert_instanced_container, 424, NULL, 0, clip_vert_instanced_resources, 2, clip_vert_instanced_clip_planes, 1, true, NULL, 0 },
++	{ 0x9DDE770D1BE997EFull, 1632, clip_planes_vert_container, 328, NULL, 0, clip_planes_vert_resources, 2, clip_planes_vert_clip_planes, 2, false, NULL, 0 },
++	{ 0x9DDE770D1BE997EFull, 1632, clip_planes_vert_instanced_container, 436, NULL, 0, clip_planes_vert_instanced_resources, 3, clip_planes_vert_instanced_clip_planes, 2, true, NULL, 0 },
++	{ 0x573E0B83B3FA03FFull, 840, coord_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x573E0B83B3FA03FFull, 840, coord_vert_instanced_container, 316, NULL, 0, coord_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0x6AB582272D68711Full, 584, cube_frag_container, 288, cube_frag_literals, 1, cube_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x3ECFF9CE3367CC96ull, 780, depth_before_frag_container, 420, depth_before_frag_literals, 5, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x280D706D52BC127Dull, 756, depth_if_frag_container, 320, depth_if_frag_literals, 3, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0xECD09D10AE23676Dull, 656, displace_frag_container, 212, NULL, 0, displace_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xD2D592A0F060832Full, 1752, displace_vert_container, 524, displace_vert_literals, 1, displace_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xD2D592A0F060832Full, 1752, displace_vert_instanced_container, 632, displace_vert_instanced_literals, 1, displace_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x0303678D7C70F7F2ull, 856, facing_frag_container, 276, facing_frag_literals, 1, facing_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2B42E465D48FF44Aull, 1164, facing_vert_container, 304, NULL, 0, facing_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2B42E465D48FF44Aull, 1164, facing_vert_instanced_container, 400, NULL, 0, facing_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x4A771FE49315AB3Eull, 660, facing_discard_frag_container, 284, facing_discard_frag_literals, 1, facing_discard_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xAE3F48293E2BB78Eull, 900, format_frag_container, 308, NULL, 0, format_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x2811FA6FAEFD76CBull, 1308, format_vert_container, 368, NULL, 0, format_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x2811FA6FAEFD76CBull, 1308, format_vert_instanced_container, 464, NULL, 0, format_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x88F91C77EB1BEF4Dull, 1060, four_targets_frag_container, 360, NULL, 0, four_targets_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xB0EBC892B5474B03ull, 612, high_block_frag_container, 180, NULL, 0, high_block_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x76D6EB5C59364543ull, 1704, instance_grid_vert_container, 804, instance_grid_vert_literals, 7, instance_grid_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xFF8CAE1C756E4C8Bull, 1508, instanced_vert_container, 628, instanced_vert_literals, 4, instanced_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x4AE4ADDA5CE226F9ull, 1264, instanced_places_vert_container, 484, instanced_places_vert_literals, 4, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x4AE4ADDA5CE226F9ull, 1264, instanced_places_vert_instanced_container, 592, instanced_places_vert_instanced_literals, 4, instanced_places_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0x241118DBBCA94D61ull, 1020, lod_bands_vert_container, 256, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x241118DBBCA94D61ull, 1020, lod_bands_vert_instanced_container, 352, NULL, 0, lod_bands_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0xF00B7F62009B0DD2ull, 760, lod_bias_frag_container, 304, lod_bias_frag_literals, 1, lod_bias_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xB9F565A23D4F158Full, 760, lod_computed_frag_container, 304, lod_computed_frag_literals, 1, lod_computed_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x6EEAA8532FB6A3ADull, 896, lod_constant_frag_container, 384, lod_constant_frag_literals, 2, lod_constant_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x3D85E4F7B11AAE8Dull, 972, lod_gradients_frag_container, 488, lod_gradients_frag_literals, 3, lod_gradients_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x9B171C25D82E0822ull, 2636, loop_break_frag_container, 5736, loop_break_frag_literals, 12, loop_break_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xB99B4DB70B339FE2ull, 1344, loop_count_frag_container, 412, loop_count_frag_literals, 1, loop_count_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x70A6A3B4021B20DDull, 2288, loop_count_vert_container, 708, loop_count_vert_literals, 1, loop_count_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x70A6A3B4021B20DDull, 2288, loop_count_vert_instanced_container, 804, loop_count_vert_instanced_literals, 1, loop_count_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
++	{ 0x7A663624A7FF0167ull, 2696, loop_count_break_frag_container, 1348, loop_count_break_frag_literals, 7, loop_count_break_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xAF2AEF463834CBD3ull, 2240, loop_count_if_frag_container, 852, loop_count_if_frag_literals, 5, loop_count_if_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x8686F55DDF3132A7ull, 1560, loop_data_frag_container, 840, loop_data_frag_literals, 6, loop_data_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x47C01916C0D26C30ull, 1644, loop_if_frag_container, 1156, loop_if_frag_literals, 6, loop_if_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x94A5578130748F1Bull, 3280, loop_nest_frag_container, 1720, loop_nest_frag_literals, 7, loop_nest_frag_resources, 3, NULL, 0, false, NULL, 0 },
++	{ 0xED07CA059DBC3E24ull, 2996, loop_sample_frag_container, 1680, loop_sample_frag_literals, 12, loop_sample_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xF411F53BD9DBFBDCull, 1572, loop_steps_frag_container, 744, loop_steps_frag_literals, 5, loop_steps_frag_resources, 3, NULL, 0, false, NULL, 0 },
++	{ 0x09F949B4AAA9B751ull, 1588, loop_uniform_if_frag_container, 1076, loop_uniform_if_frag_literals, 3, loop_uniform_if_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x713CFD6FB43D7BB6ull, 2576, many_samplers_frag_container, 1484, many_samplers_frag_literals, 1, many_samplers_frag_resources, 16, NULL, 0, false, NULL, 0 },
++	{ 0xD059818F7A3C789Dull, 3276, many_samplers_vert_container, 1328, many_samplers_vert_literals, 1, many_samplers_vert_resources, 16, NULL, 0, false, NULL, 0 },
++	{ 0xD059818F7A3C789Dull, 3276, many_samplers_vert_instanced_container, 1436, many_samplers_vert_instanced_literals, 1, many_samplers_vert_instanced_resources, 17, NULL, 0, true, NULL, 0 },
++	{ 0x5A2BECEEFADE12C1ull, 3132, many_samplers_15_vert_container, 1260, many_samplers_15_vert_literals, 1, many_samplers_15_vert_resources, 15, NULL, 0, false, NULL, 0 },
++	{ 0x5A2BECEEFADE12C1ull, 3132, many_samplers_15_vert_instanced_container, 1368, many_samplers_15_vert_instanced_literals, 1, many_samplers_15_vert_instanced_resources, 16, NULL, 0, true, NULL, 0 },
++	{ 0x7FE8FDDA40D6F24Full, 1716, matrix_index_vert_container, 640, matrix_index_vert_literals, 2, matrix_index_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x7FE8FDDA40D6F24Full, 1716, matrix_index_vert_instanced_container, 736, matrix_index_vert_instanced_literals, 2, matrix_index_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x3801975376C88E87ull, 1064, point_vert_container, 272, NULL, 0, point_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x3801975376C88E87ull, 1064, point_vert_instanced_container, 380, NULL, 0, point_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0xE0000D7993864FE5ull, 496, point_coord_frag_container, 172, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x0B479C4C6E0FB60Full, 496, push_frag_container, 180, NULL, 0, push_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x65B9D40C8193B5E1ull, 1020, push_vert_container, 272, NULL, 0, push_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x65B9D40C8193B5E1ull, 1020, push_vert_instanced_container, 380, NULL, 0, push_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x2C19078560792479ull, 784, scaled_frag_container, 252, NULL, 0, scaled_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x4E3BA1F5CB6ACE4Cull, 640, shadow_frag_container, 316, NULL, 0, shadow_frag_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0xF6F8C61514FAA97Cull, 556, texture_frag_container, 208, NULL, 0, texture_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x44C70BCFE37A5B64ull, 888, texture_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x44C70BCFE37A5B64ull, 888, texture_vert_instanced_container, 316, NULL, 0, texture_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0x58184EA43D98582Cull, 372, triangle_frag_container, 140, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x1497DA5509A7A8C3ull, 840, triangle_vert_container, 220, NULL, 0, NULL, 0, NULL, 0, false, NULL, 0 },
++	{ 0x1497DA5509A7A8C3ull, 840, triangle_vert_instanced_container, 316, NULL, 0, triangle_vert_instanced_resources, 1, NULL, 0, true, NULL, 0 },
++	{ 0x8B66809442D981CCull, 632, uniform_frag_container, 184, NULL, 0, uniform_frag_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xA5689CD33A8F3B42ull, 1172, uniform_vert_container, 344, NULL, 0, uniform_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0xA5689CD33A8F3B42ull, 1172, uniform_vert_instanced_container, 440, NULL, 0, uniform_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x176210E07BE84ED8ull, 1428, vertex_alpha_vert_container, 464, NULL, 0, vertex_alpha_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x176210E07BE84ED8ull, 1428, vertex_alpha_vert_instanced_container, 560, NULL, 0, vertex_alpha_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_container, 448, NULL, 0, vertex_format_vert_resources, 1, NULL, 0, false, NULL, 0 },
++	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_instanced_container, 544, NULL, 0, vertex_format_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0xD4A7E8C9F4301714ull, 588, volume_frag_container, 208, NULL, 0, volume_frag_resources, 1, NULL, 0, false, NULL, 0 },
+ };
+ 
+ const V4xShaderBundle v4x_shader_bundle = { shaders, 113 };
+diff --git a/tests/tests.h b/tests/tests.h
+index 558818fad5db6d68df25808da201aaa008a6fe8f..1144f9a051332603f6976c2949996290094f1027 100644
+--- a/tests/tests.h
++++ b/tests/tests.h
+@@ -43,6 +43,7 @@ void test_occlusion(const Harness *harness);
+ void test_events(const Harness *harness);
+ // A triangle through Vulkan, checked on the image the display shows.
+ void test_triangle(const Harness *harness);
++void test_specialization(const Harness *harness);
+ // The triangle again, its shaders read back from the layer's cache by a second device (milestone 13).
+ void test_triangle_from_cache(const Harness *harness);
+ // The triangle with 8-bit colours packed in a word, as Aurora decodes vertex colours (milestone 10).
+diff --git a/tools/build_shaders.py b/tools/build_shaders.py
+index ab65b6a5eb752757bf8652b81e840f043afd2291..e294a55c25031eafc5f913e0b6500bfb3bcf7d11 100644
+--- a/tools/build_shaders.py
++++ b/tools/build_shaders.py
+@@ -32,6 +32,8 @@ RESOURCE_KINDS = {"push": "V4X_RESOURCE_PUSH_CONSTANTS", "uniform": "V4X_RESOURC
+                   "sampler": "V4X_RESOURCE_SAMPLER", "push_loop": "V4X_RESOURCE_PUSH_LOOP",
+                   "uniform_loop": "V4X_RESOURCE_UNIFORM_LOOP", "comparison": "V4X_RESOURCE_COMPARISON",
+                   "instance": "V4X_RESOURCE_INSTANCE", "fixed_loop": "V4X_RESOURCE_FIXED_LOOP"}
++SPECIALIZATION_TYPES = {"bool": "V4X_SPECIALIZATION_BOOL", "int": "V4X_SPECIALIZATION_INT",
++                        "uint": "V4X_SPECIALIZATION_UINT", "float": "V4X_SPECIALIZATION_FLOAT"}
+ DEFAULT_BUNDLE = "v4x_shader_bundle"
+ FNV_OFFSET_BASIS = 0xCBF29CE484222325
+ FNV_PRIME = 0x100000001B3
+@@ -72,6 +74,7 @@ def lower(xost, spirv_bytes, source, optimize=False, instanced=False):
+     resources = [resource + (0, 0) for resource in resources]
+     literals = []
+     clip_planes = []
++    specializations = []
+     for entry in manifest:
+         # A hardware loop's count, which the layer reads from the block for each draw, and its i's start and step,
+         # which the layer works its passes out from: a resource of its own.
+@@ -84,11 +87,14 @@ def lower(xost, spirv_bytes, source, optimize=False, instanced=False):
+             resources.append(("fixed_loop", 0, 0, passes, loop, 0, 0))
+         elif entry[0] == "clip":
+             clip_planes.append((entry[2], entry[1]))
++        elif entry[0] == "spec":
++            _, reg, constant_id, scalar_type, default_value = entry
++            specializations.append((reg, constant_id, scalar_type, default_value))
+         elif len(entry) != 2:
+             sys.exit(f"{source}: xost wants a constant the layer doesn't set yet: {entry}")
+         else:
+             literals.append(entry)
+-    return container, literals, resources, clip_planes
++    return container, literals, resources, clip_planes, specializations
+ 
+ 
+ def c_name(source, prefix):
+@@ -149,10 +155,19 @@ def write_outputs(output, shaders, sources, bundle):
+             for reg, plane in shader["clip_planes"]:
+                 source.append(f"\t{{ {reg}, {plane} }},")
+             source += ["};", ""]
++        specializations = "NULL"
++        if shader["specializations"]:
++            specializations = f"{name}_specializations"
++            source.append(f"static const V4xShaderSpecialization {specializations}[] = {{")
++            for reg, constant_id, scalar_type, default_value in shader["specializations"]:
++                source.append(f"\t{{ {reg}, {constant_id}, {SPECIALIZATION_TYPES[scalar_type]}, "
++                              f"{float_literal(default_value)} }},")
++            source += ["};", ""]
+         entries.append(f"\t{{ 0x{shader['hash']:016X}ull, {len(shader['spirv'])}, {name}_container, "
+                        f"{len(shader['container'])}, {literals}, {len(shader['literals'])}, {resources}, "
+                        f"{len(shader['resources'])}, {clip_planes}, {len(shader['clip_planes'])}, "
+-                       f"{'true' if instanced else 'false'} }},")
++                       f"{'true' if instanced else 'false'}, {specializations}, "
++                       f"{len(shader['specializations'])} }},")
+     source += ["static const V4xShader shaders[] = {"] + entries + ["};", ""]
+     source.append(f"const V4xShaderBundle {bundle} = {{ shaders, {len(shaders)} }};")
+     header += ["", "#endif"]
+@@ -180,11 +195,12 @@ def main():
+         for source in args.sources:
+             spirv_bytes = compile_spirv(glslang, source, directory)
+             for instanced in (False, True):
+-                container, literals, resources, clip_planes = lower(args.xost.resolve(), spirv_bytes, source,
+-                                                                    args.optimize, instanced)
++                container, literals, resources, clip_planes, specializations = lower(
++                    args.xost.resolve(), spirv_bytes, source, args.optimize, instanced)
+                 shaders.append({"name": c_name(source, args.prefix) + ("_instanced" if instanced else ""),
+                                 "spirv": spirv_bytes, "hash": fnv1a_64(spirv_bytes), "container": container,
+                                 "literals": literals, "resources": resources, "clip_planes": clip_planes,
++                                "specializations": specializations,
+                                 "instanced": instanced})
+                 # A fragment shader has no variant, nor does a vertex shader already lowered instanced.
+                 if source.suffix != ".vert" or any(resource[0] == "instance" for resource in resources):
+diff --git a/tests/test_specialization.c b/tests/test_specialization.c
+new file mode 100644
+index 0000000000000000000000000000000000000000..071239b8b72099d25d8f6253d57ba1112951d5ad
+--- /dev/null
++++ b/tests/test_specialization.c
+@@ -0,0 +1,65 @@
++#include <stdbool.h>
++#include <stdint.h>
++
++#include "harness.h"
++#include "shaders.h"
++#include "tests.h"
++
++enum {
++	VERTEX_FLOATS = 8,
++	STRIDE_BYTES = VERTEX_FLOATS * 4,
++	COLOR_OFFSET_BYTES = 16,
++};
++
++static const VkVertexInputBindingDescription binding = { 0, STRIDE_BYTES, VK_VERTEX_INPUT_RATE_VERTEX };
++static const VkVertexInputAttributeDescription attributes[] = {
++	{ .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = 0 },
++	{ .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32A32_SFLOAT, .offset = COLOR_OFFSET_BYTES },
++};
++
++void test_specialization(const Harness *harness)
++{
++	const struct {
++		float brightness;
++		int32_t mode;
++	} values = { 0.5f, 1 };
++	const VkSpecializationMapEntry entries[] = {
++		{ .constantID = 0, .offset = 0, .size = sizeof values.brightness },
++		{ .constantID = 1, .offset = sizeof values.brightness, .size = sizeof values.mode },
++	};
++	const VkSpecializationInfo specialization = {
++		.mapEntryCount = 2,
++		.pMapEntries = entries,
++		.dataSize = sizeof values,
++		.pData = &values,
++	};
++	const VkPipelineLayoutCreateInfo layout_info = { .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
++	VkPipelineLayout layout = VK_NULL_HANDLE;
++	VkRenderPass render_pass = VK_NULL_HANDLE;
++	VkFramebuffer framebuffers[HARNESS_MAX_IMAGES];
++	VkPipeline pipeline = VK_NULL_HANDLE;
++	bool ok = harness_ok("pipeline layout", vkCreatePipelineLayout(harness->device, &layout_info, NULL, &layout));
++	ok = ok && harness_ok("render pass", harness_render_pass(harness, &render_pass, framebuffers));
++	const HarnessPipeline spec = {
++		.vertex_spirv = triangle_vert_spirv,
++		.vertex_bytes = TRIANGLE_VERT_SPIRV_BYTES,
++		.fragment_spirv = triangle_frag_spirv,
++		.fragment_bytes = TRIANGLE_FRAG_SPIRV_BYTES,
++		.bindings = &binding,
++		.binding_count = 1,
++		.attributes = attributes,
++		.attribute_count = 2,
++		.layout = layout,
++		.fragment_specialization = &specialization,
++	};
++	ok = ok &&
++		harness_ok(
++			"graphics pipeline with VkSpecializationInfo", harness_pipeline(harness, &spec, render_pass, &pipeline));
++	check("specialization: pipeline creation accepts a specialization info", ok);
++	if (pipeline)
++		vkDestroyPipeline(harness->device, pipeline, NULL);
++	if (render_pass)
++		harness_destroy_render_pass(harness, render_pass, framebuffers);
++	if (layout)
++		vkDestroyPipelineLayout(harness->device, layout, NULL);
++}
+diff --git a/Makefile b/Makefile
+index 671453f..d78bcd4 100644
+--- a/Makefile
++++ b/Makefile
+@@ -32,6 +32,7 @@ LAYER_OBJECTS := $(patsubst src/%.c,$(BUILD)/src/%.o,$(LAYER_SOURCES))
+ # tests/shaders.c and src/blit_shaders.c come from tools/build_shaders.py, run by hand where glslang and xost are.
+ TEST_SOURCES := tests/main.c tests/harness.c tests/harness_scene.c tests/test_boot_logo.c tests/test_objects.c \
+ 	tests/test_triangle.c tests/test_packed_colour.c tests/test_texture.c tests/test_push_constants.c \
++	tests/test_specialization.c \
+ 	tests/test_uniform_buffers.c tests/test_indexed.c tests/test_depth_stencil.c tests/test_raster.c \
+ 	tests/test_render_to_texture.c tests/test_run_time_index.c tests/test_uploads.c tests/test_thin_textures.c \
+ 	tests/test_sampled_depth.c tests/test_anisotropy.c tests/test_aurora_points.c tests/test_lod.c \
