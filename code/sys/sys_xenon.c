@@ -3,6 +3,7 @@
 #include "sys_local.h"
 #include "xsdk/log.h"
 #include "xsdk/kernel.h"
+#include "xsdk/xam.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -498,9 +499,42 @@ void Sys_Init( void )
 	Cvar_Set( "username", Sys_GetCurrentUser() );
 }
 
+static char sys_gamertag[XSDK_XAM_GAMERTAG_BYTES];
+
+// Runs before Com_Init, so it logs with xsdk_log_write rather than Com_Printf.
+void Sys_InitGamertag( void )
+{
+	uint32_t user = 0;
+	char raw[XSDK_XAM_GAMERTAG_BYTES] = "";
+	char msg[128];
+	size_t i, n = 0;
+
+	sys_gamertag[0] = '\0';
+	if ( xsdk_xam_signed_in_user( &user, raw ) == ERROR_SUCCESS ) {
+		// Info strings reject \ and ", and ; would end the command that sets the name.
+		for ( i = 0; i < sizeof( raw ) && raw[i] && n < sizeof( sys_gamertag ) - 1; i++ ) {
+			unsigned char c = (unsigned char)raw[i];
+
+			if ( c < 0x20 || c == '"' || c == '\\' || c == ';' ) {
+				continue;
+			}
+			sys_gamertag[n++] = (char)c;
+		}
+		sys_gamertag[n] = '\0';
+	}
+
+	Com_sprintf( msg, sizeof( msg ), "gamertag: %s", sys_gamertag[0] ? sys_gamertag : "none signed in" );
+	xsdk_log_write( "%s", msg );
+}
+
+const char *Sys_Gamertag( void )
+{
+	return sys_gamertag;
+}
+
 char *Sys_GetCurrentUser( void )
 {
-	return "player";
+	return sys_gamertag[0] ? sys_gamertag : "player";
 }
 
 cpuFeatures_t Sys_GetProcessorFeatures( void )

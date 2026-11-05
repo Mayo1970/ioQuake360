@@ -61,6 +61,8 @@ char *Sys_StripAppBundle( char *pwd );
 void Sys_GLimpSafeInit( void );
 void Sys_GLimpInit( void );
 void Sys_PlatformInit( void );
+void Sys_InitGamertag( void );
+const char *Sys_Gamertag( void );
 #ifdef X360_DEBUG
 void Sys_LogFreeMemory( const char *when );
 #endif
