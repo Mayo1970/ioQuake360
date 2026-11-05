@@ -121,7 +121,7 @@ make clean    # wipe all build dirs (build/, build_ta/, build_oa/)
 
 | Flag | Effect |
 |---|---|
-| `DEBUG=1` | Adds `-DX360_DEBUG -g`; writes `log[_ta\|_oa].txt` next to the `.xex`. Release builds emit no log file. |
+| `DEBUG=1` | Adds `-DX360_DEBUG -g`; writes `ioquake360[_ta\|_oa].log` next to the `.xex`. Release builds write no log. |
 | `RENDERER=vk` | Links Quake3e's Vulkan renderer. The default is `RENDERER=null`. |
 
 ### Outputs

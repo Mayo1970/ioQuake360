@@ -367,6 +367,11 @@ void Sys_FreeFileList( char **list )
 	Z_Free( list );
 }
 
+#ifndef X360_DEBUG
+// Release builds keep no log: each line is a synchronous disk write on the game thread, which hitches play.
+bool xsdk_log_wanted = false;
+#endif
+
 void Sys_Print( const char *msg )
 {
 	xsdk_log_write_bytes( msg, strlen( msg ) );

@@ -95,5 +95,6 @@ missing intro video, etc.), delete that build's `*config.cfg` in its game
 dir (`baseq3\`, `missionpack\` or `baseoa\`) — a stale config can override
 the correct defaults.
 
-Debug builds (`DEBUG=1`) write `log.txt` / `log_ta.txt` / `log_oa.txt` next
-to the `.xex`. Send it along with any bug report.
+Debug builds (`DEBUG=1`) write `ioquake360.log` / `ioquake360_ta.log` /
+`ioquake360_oa.log` next to the `.xex`. Send it along with any bug report.
+Release builds write no log.

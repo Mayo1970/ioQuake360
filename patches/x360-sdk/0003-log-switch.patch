@@ -1,0 +1,32 @@
+diff --git a/include/xsdk/log.h b/include/xsdk/log.h
+index 4ab7bf53f325e0ddb63ba51cfc0172a9e9406c84..45f88a1b46c0ef615a263db6a6d007199b97bfe6 100644
+--- a/include/xsdk/log.h
++++ b/include/xsdk/log.h
+@@ -10,6 +10,8 @@
+ extern "C" {
+ #endif
+ 
++// True unless the title defines it false, which leaves the log closed: no file, network or DbgPrint.
++extern bool xsdk_log_wanted;
+ NTSTATUS xsdk_log_open(void);
+ // Where the log is, as a kernel path ("game:\xsdk_test.log", or a device path); NULL before it opens. Others can open
+ // it for reading while the title writes it.
+diff --git a/src/log.c b/src/log.c
+index 921616da37ba4afccae36c1e63414170b4d41f39..a91420215f12b363fde3d3d97f03a3b97b7228d9 100644
+--- a/src/log.c
++++ b/src/log.c
+@@ -138,9 +138,14 @@ static void open_net_log(char *note, size_t note_bytes)
+ 	(void)snprintf(note, note_bytes, "log: also over UDP to %s:%u", address, port);
+ }
+ 
++// Weak, so a title can define it false; the lock is still made, so xsdk_log_write stays safe to call.
++__attribute__((weak)) bool xsdk_log_wanted = true;
++
+ NTSTATUS xsdk_log_open(void)
+ {
+ 	RtlInitializeCriticalSection(&log_lock);
++	if (!xsdk_log_wanted)
++		return STATUS_SUCCESS;
+ 	// Both before the file, so they get every line, the file's failures among them.
+ 	FILE *const dbgprint = fopen("dbgprint.txt", "r");
+ 	if (dbgprint) {
