@@ -30,7 +30,9 @@ Checked in [Xenia](https://github.com/xenia-canary/xenia-canary) so far:
   controller, so the swapchain fails there; the build logs the pipeline count
   and quits.
 
-Not done yet: controller input, rumble, audio, music, networking and text input.
+Built but not yet checked on hardware: controller input, rumble, audio, OGG
+music with per-map playlists, IPv4 networking, the system keyboard for text
+input, Back + Start to quit, the Guide, and the release layout (`make dist`).
 
 Planned for the first release, to match the PS3 port:
 
