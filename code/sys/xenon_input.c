@@ -15,6 +15,10 @@ extern char *Key_GetBinding(int keynum);
 #define XI_TRIGGER_THRESHOLD  30
 #define XI_AXIS_MAX           32767
 #define XI_MENU_CURSOR_SPEED  5.0f
+#define XI_OSK_TEXT_MAX       256
+#define XI_OSK_TITLE_MAX      64
+#define XI_UI_FOCUS_MS        100
+#define XI_TA_ENTER_MS        300
 
 enum {
 	PB_A, PB_B, PB_X, PB_Y,
@@ -46,6 +50,23 @@ static cvar_t *x360_rumbleEnable = NULL;
 static cvar_t *x360_rumbleScale  = NULL;
 static int     s_rumbleExpiryMs = 0;
 static int     s_rumbleActive   = 0;
+
+static XAM_OVERLAPPED xi_osk_ov;
+static uint16_t xi_osk_result[XI_OSK_TEXT_MAX];
+static uint16_t xi_osk_title[XI_OSK_TITLE_MAX];
+static const uint16_t xi_osk_empty[1] = { 0 };
+static qboolean xi_osk_active;
+static qboolean xi_osk_resync;
+static qboolean xi_osk_auto_submit;
+static qboolean xi_osk_prepend_slash;
+static qboolean xi_osk_field_clear;
+static qboolean xi_osk_enter_on_close;
+/* Starts far in the past so XI_UIFieldFocused() is false until the first cursor draw. */
+static int xi_ui_cursor_ms = -1000;
+#ifdef STANDALONETA
+static int xi_ta_enter_ms;
+#endif
+static qboolean xi_ta_enter_pending;
 
 static void XI_SetDefaultBind(int keynum, const char *binding)
 {
@@ -99,6 +120,7 @@ static void XI_ResetState(void)
 	xi_cursor_accum_x = 0.0f;
 	xi_cursor_accum_y = 0.0f;
 	xi_prev_in_menu = 0;
+	xi_ta_enter_pending = qfalse;
 	s_rumbleActive = 0;
 	s_rumbleExpiryMs = 0;
 }
@@ -107,6 +129,99 @@ static void XI_ToggleConsole(void)
 {
 	Com_QueueEvent(0, SE_KEY, K_CONSOLE, qtrue, 0, NULL);
 	Com_QueueEvent(0, SE_KEY, K_CONSOLE, qfalse, 0, NULL);
+}
+
+static void XI_TapKey(int key)
+{
+	Com_QueueEvent(0, SE_KEY, key, qtrue, 0, NULL);
+	Com_QueueEvent(0, SE_KEY, key, qfalse, 0, NULL);
+}
+
+void XI_NoteUIFieldCursor(void)
+{
+	xi_ui_cursor_ms = Sys_Milliseconds();
+}
+
+static qboolean XI_UIFieldFocused(void)
+{
+	return Sys_Milliseconds() - xi_ui_cursor_ms <= XI_UI_FOCUS_MS ? qtrue : qfalse;
+}
+
+static void XI_AsciiToUtf16(const char *src, uint16_t *dst, int count)
+{
+	int i;
+
+	/* XAM reads UTF-16 big endian, the PPC order, so no byte swap. */
+	for (i = 0; i < count - 1 && src[i]; i++)
+		dst[i] = (uint16_t)(unsigned char)src[i];
+	dst[i] = 0;
+}
+
+static void XI_KeyboardOpen(const char *title, int maxlen, qboolean autoSubmit, qboolean prependSlash,
+	qboolean fieldClear, qboolean enterOnClose)
+{
+	uint32_t ret;
+
+	if (xi_osk_active || xi_active_port < 0)
+		return;
+
+	if (maxlen < 1)
+		maxlen = 1;
+	if (maxlen > XI_OSK_TEXT_MAX - 1)
+		maxlen = XI_OSK_TEXT_MAX - 1;
+
+	XI_AsciiToUtf16(title, xi_osk_title, XI_OSK_TITLE_MAX);
+	memset(xi_osk_result, 0, sizeof(xi_osk_result));
+	memset(&xi_osk_ov, 0, sizeof(xi_osk_ov));
+	/* Pre-set, or a result of 0 would read as already closed before XAM answers. */
+	xi_osk_ov.result = ERROR_IO_PENDING;
+
+	ret = XamShowKeyboardUI(xi_active_port, 0, xi_osk_empty, xi_osk_title, xi_osk_empty, xi_osk_result,
+		maxlen + 1, &xi_osk_ov);
+	if (ret != ERROR_IO_PENDING && ret != ERROR_SUCCESS) {
+		Com_Printf("XamShowKeyboardUI failed: 0x%X\n", ret);
+		return;
+	}
+	if (ret != ERROR_IO_PENDING)
+		xi_osk_ov.result = ret;
+
+	xi_osk_auto_submit = autoSubmit;
+	xi_osk_prepend_slash = prependSlash;
+	xi_osk_field_clear = fieldClear;
+	xi_osk_enter_on_close = enterOnClose;
+	xi_osk_active = qtrue;
+	XI_ReleaseHeld();
+	Com_Printf("XamShowKeyboardUI opened\n");
+}
+
+static void XI_KeyboardClose(void)
+{
+	uint32_t result = xi_osk_ov.result;
+	qboolean cancelled = (result == ERROR_CANCELLED || xi_osk_ov.extended_error == ERROR_CANCELLED);
+	int i;
+
+	xi_osk_active = qfalse;
+	xi_osk_resync = qtrue;
+
+	if (cancelled || result != ERROR_SUCCESS) {
+		if (xi_osk_enter_on_close)
+			XI_TapKey(K_ENTER);
+		return;
+	}
+
+	if (xi_osk_field_clear) {
+		XI_TapKey(K_END);
+		for (i = 0; i < 80; i++)
+			Com_QueueEvent(0, SE_CHAR, 8, 0, 0, NULL);
+	}
+	if (xi_osk_prepend_slash && xi_osk_result[0] != '/' && xi_osk_result[0] != '\\')
+		Com_QueueEvent(0, SE_CHAR, '/', 0, 0, NULL);
+	for (i = 0; i < XI_OSK_TEXT_MAX && xi_osk_result[i]; i++) {
+		if (xi_osk_result[i] >= 32 && xi_osk_result[i] <= 126)
+			Com_QueueEvent(0, SE_CHAR, xi_osk_result[i], 0, 0, NULL);
+	}
+	if (xi_osk_auto_submit || xi_osk_enter_on_close)
+		XI_TapKey(K_ENTER);
 }
 
 static void XI_ReadButtons(const INPUT_GAMEPAD *pad, int out[PB_COUNT])
@@ -296,10 +411,23 @@ void IN_Frame(void)
 	}
 	if (cand < 0)
 		return;
+
+	/* XAM owns the pad while the keyboard is up, so no pad events are sent. */
+	if (xi_osk_active) {
+		if (xi_osk_ov.result == ERROR_IO_PENDING)
+			return;
+		XI_KeyboardClose();
+		return;
+	}
 	XI_RumbleTick();
 
 	pad = &states[cand].gamepad;
 	XI_ReadButtons(pad, cur);
+	/* A held A that closed the keyboard must not fire again. */
+	if (xi_osk_resync) {
+		memcpy(xi_btn_prev, cur, sizeof(xi_btn_prev));
+		xi_osk_resync = qfalse;
+	}
 
 	catchers = Key_GetCatcher();
 	in_menu = (catchers & (KEYCATCH_UI | KEYCATCH_CGAME)) ? 1 : 0;
@@ -324,6 +452,32 @@ void IN_Frame(void)
 		XI_ToggleConsole();
 		swallow[PB_B] = 1;
 	}
+
+#ifdef STANDALONETA
+	/* TA enters the field on A one frame before its cursor draws, so the open waits for focus. */
+	if (xi_ta_enter_pending) {
+		if (!in_menu || Sys_Milliseconds() - xi_ta_enter_ms > XI_TA_ENTER_MS) {
+			xi_ta_enter_pending = qfalse;
+		} else if (XI_UIFieldFocused()) {
+			xi_ta_enter_pending = qfalse;
+			XI_KeyboardOpen("Enter text", 80, qfalse, qfalse, qtrue, qtrue);
+		}
+	}
+#endif
+
+	if (cur[PB_A] && !xi_btn_prev[PB_A] && !cur[PB_BACK]) {
+		if (catchers & KEYCATCH_CONSOLE) {
+			XI_KeyboardOpen("Console Command", 128, qtrue, qtrue, qfalse, qfalse);
+		} else if (catchers & KEYCATCH_MESSAGE) {
+			XI_KeyboardOpen("Chat", 128, qtrue, qfalse, qfalse, qfalse);
+		} else if (in_menu && XI_UIFieldFocused()) {
+			XI_KeyboardOpen("Enter text", 80, qfalse, qfalse, qtrue, qfalse);
+		}
+		if (xi_osk_active)
+			swallow[PB_A] = 1;
+	}
+	if (xi_osk_active)
+		return;
 
 	/* LS+RS (edge-detected): toggle rumble enable; both presses are swallowed so +speed/+scores stay quiet. */
 	if (cur[PB_LS] && cur[PB_RS] && (!xi_btn_prev[PB_LS] || !xi_btn_prev[PB_RS])) {
@@ -359,9 +513,15 @@ void IN_Frame(void)
 			continue;
 
 		key = xi_key_map[i];
-		if (in_menu && i == PB_A)
+		if (in_menu && i == PB_A) {
 			key = K_ENTER;
-		else if (in_menu && i == PB_B)
+#ifdef STANDALONETA
+			if (!XI_UIFieldFocused()) {
+				xi_ta_enter_ms = Sys_Milliseconds();
+				xi_ta_enter_pending = qtrue;
+			}
+#endif
+		} else if (in_menu && i == PB_B)
 			key = K_ESCAPE;
 		xi_btn_sent[i] = key;
 		Com_QueueEvent(0, SE_KEY, key, qtrue, 0, NULL);
@@ -398,6 +558,8 @@ void IN_Frame(void)
 
 void IN_Shutdown(void)
 {
+	/* No XAM call to cancel the keyboard; none is imported. */
+	xi_osk_active = qfalse;
 	XI_RumbleStop();
 	XI_ReleaseHeld();
 	XI_ResetState();

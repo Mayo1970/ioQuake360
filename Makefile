@@ -10,7 +10,6 @@ PYTHON ?= python3
 XSDK ?= x360-sdk
 ARGS ?=
 RENDERER ?= null
-XSDK_PATCH := patches/x360-sdk/0001-specialization-constants.patch
 VULKAN4XENON_PATCH := patches/vulkan4xenon/0001-specialization-constants.patch
 VK_SHADER_BUNDLE := code/renderervk/shaders/xenon/vk_shader_bundle
 
@@ -383,7 +382,8 @@ define apply_patch
 endef
 
 xsdk-patches:
-	$(call apply_patch,$(XSDK),$(XSDK_PATCH))
+	$(call apply_patch,$(XSDK),patches/x360-sdk/0001-specialization-constants.patch)
+	$(call apply_patch,$(XSDK),patches/x360-sdk/0002-xam-show-keyboard-ui.patch)
 
 vulkan4xenon-patches:
 	$(call apply_patch,vulkan4xenon,$(VULKAN4XENON_PATCH))
@@ -414,6 +414,8 @@ $(ARGS_STAMP): FORCE
 
 $(BUILD)/obj/code/sys/xenon_main.o: $(ARGS_STAMP)
 $(BUILD)/obj/code/sys/xenon_vk.o: $(BUILD)/renderer.stamp
+# XAM_OVERLAPPED and XamShowKeyboardUI come from the SDK patch, so it must be applied first.
+$(BUILD)/obj/code/sys/xenon_input.o: | xsdk-patches
 ifeq ($(RENDERER),vk)
 $(BUILD)/obj/code/sys/xenon_vk.o: CFLAGS += -DQ360_RENDERER_VK
 $(BUILD)/obj/code/renderervk/vk.o: CFLAGS += -Ivulkan4xenon/include
