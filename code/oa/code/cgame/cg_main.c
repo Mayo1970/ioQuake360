@@ -1242,7 +1242,12 @@ static void CG_RegisterGraphics( void ) {
 	Q_strncpyz(items, CG_ConfigString(CS_ITEMS), sizeof(items));
 
 	for ( i = 1 ; i < bg_numItems ; i++ ) {
+#ifdef __XSDK__
+		// All items: a weapon missing from the map's list loads at its first use, which hitches play.
+		if ( 1 ) {
+#else
 		if ( items[ i ] == '1' || cg_buildScript.integer ) {
+#endif
 			CG_LoadingItem( i );
 			CG_RegisterItemVisuals( i );
 		}
