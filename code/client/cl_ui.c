@@ -1156,6 +1156,15 @@ void CL_InitUI( void ) {
 		// init for this gamestate
 		VM_Call( uivm, UI_INIT, (clc.state >= CA_AUTHORIZING && clc.state < CA_ACTIVE) );
 	}
+
+#if defined(__XSDK__) && !defined(MISSIONPACK)
+	// q3_ui's in-game menu loads its frame from disk at the first Start press (InGame_Cache); load it with the ui.
+#ifdef STANDALONEOA
+	re.RegisterShaderNoMip( "menu/art_blueish/addbotframe" );
+#else
+	re.RegisterShaderNoMip( "menu/art/addbotframe" );
+#endif
+#endif
 }
 
 #ifndef STANDALONE
