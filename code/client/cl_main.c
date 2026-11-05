@@ -3704,7 +3704,19 @@ void CL_Init( void ) {
 	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", "~ ` 0x7e 0x60", CVAR_ARCHIVE);
 
 	// userinfo
+#ifdef __XSDK__
+	{
+		extern const char *Sys_Gamertag( void );
+		const char *gamertag = Sys_Gamertag();
+		cvar_t *name = Cvar_Get ("name", gamertag[0] ? gamertag : "UnnamedPlayer", CVAR_USERINFO | CVAR_ARCHIVE );
+
+		// Configs saved before the gamertag default still hold UnnamedPlayer.
+		if ( gamertag[0] && !Q_stricmp( name->string, "UnnamedPlayer" ) )
+			Cvar_Set( "name", gamertag );
+	}
+#else
 	Cvar_Get ("name", "UnnamedPlayer", CVAR_USERINFO | CVAR_ARCHIVE );
+#endif
 	cl_rate = Cvar_Get ("rate", "25000", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("snaps", "20", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("model", "sarge", CVAR_USERINFO | CVAR_ARCHIVE );

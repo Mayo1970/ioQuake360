@@ -15,6 +15,7 @@ int main(void)
 
 	xsdk_log_write("ioQuake360: " Q360_TITLE " " Q360_BUILD_TYPE " build");
 	Sys_PlatformInit();
+	Sys_InitGamertag();
 	cmdline[0] = '\0';
 #ifdef STANDALONETA
 	Q_strcat(cmdline, sizeof(cmdline), "+set fs_game " BASETA);
