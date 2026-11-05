@@ -15,13 +15,14 @@ int main(void)
 
 	xsdk_log_write("ioQuake360: " Q360_TITLE " " Q360_BUILD_TYPE " build");
 	Sys_PlatformInit();
-	Q_strncpyz(cmdline, "+set net_enabled 0", sizeof(cmdline));
+	cmdline[0] = '\0';
 #ifdef STANDALONETA
-	Q_strcat(cmdline, sizeof(cmdline), " +set fs_game " BASETA);
+	Q_strcat(cmdline, sizeof(cmdline), "+set fs_game " BASETA);
 #endif
 	if (Q360_ARGS[0])
 	{
-		Q_strcat(cmdline, sizeof(cmdline), " ");
+		if (cmdline[0])
+			Q_strcat(cmdline, sizeof(cmdline), " ");
 		Q_strcat(cmdline, sizeof(cmdline), Q360_ARGS);
 	}
 	Com_Init(cmdline);
