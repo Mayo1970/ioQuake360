@@ -233,6 +233,8 @@ Triggered on own pain, own weapon fire and hit feedback.
 
 OGG Vorbis background music, with the PS3 port's per-map playlists.
 
+The per-map playlists work in ioQuake3 and Team Arena. Open Arena plays the map's own track.
+
 **Search order:**
 
 1. `playlist_<mapname>.cfg` — map-specific playlist

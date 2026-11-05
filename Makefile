@@ -18,6 +18,11 @@ ZLIB_DIR := code/thirdparty/zlib-1.3.1
 ZLIB_SOURCES := $(wildcard $(ZLIB_DIR)/*.c)
 JPEG_DIR := code/thirdparty/jpeg-9f
 JPEG_SOURCES := $(wildcard $(JPEG_DIR)/j*.c)
+OGG_DIR := code/thirdparty/libogg-1.3.6
+OGG_SOURCES := $(OGG_DIR)/src/bitwise.c $(OGG_DIR)/src/framing.c
+VORBIS_DIR := code/thirdparty/libvorbis-1.3.7
+# The PS3 port's file list.
+VORBIS_SOURCES := $(addprefix $(VORBIS_DIR)/lib/,mdct.c block.c window.c synthesis.c info.c floor0.c floor1.c res0.c mapping0.c registry.c codebook.c sharedbook.c smallft.c vorbisfile.c analysis.c bitrate.c envelope.c lpc.c lsp.c psy.c)
 ENGINE_SOURCES := \
 	code/qcommon/cm_load.c \
 	code/qcommon/cm_patch.c \
@@ -70,6 +75,7 @@ ENGINE_SOURCES := \
 	code/client/snd_main.c \
 	code/client/snd_codec.c \
 	code/client/snd_codec_wav.c \
+	code/client/snd_codec_ogg.c \
 	code/client/snd_openal.c \
 	code/sys/xenon_input.c \
 	code/sys/sys_xenon.c \
@@ -87,14 +93,14 @@ else
 $(error Unsupported RENDERER '$(RENDERER)' (expected null or vk))
 endif
 
-SOURCES := $(ENGINE_SOURCES) $(ZLIB_SOURCES) $(JPEG_SOURCES)
+SOURCES := $(ENGINE_SOURCES) $(ZLIB_SOURCES) $(JPEG_SOURCES) $(OGG_SOURCES) $(VORBIS_SOURCES)
 OBJECTS := $(patsubst %.c,$(BUILD)/obj/%.o,$(SOURCES))
 DEPS := $(OBJECTS:.o=.d)
 ARGS_STAMP := $(BUILD)/args.stamp
 
-DEFINES := -DBOTLIB -DNO_VM_COMPILED -DUSE_INTERNAL_ZLIB -DUSE_INTERNAL_JPEG -DNO_GZIP
+DEFINES := -DBOTLIB -DNO_VM_COMPILED -DUSE_INTERNAL_ZLIB -DUSE_INTERNAL_JPEG -DNO_GZIP -DUSE_CODEC_VORBIS
 CFLAGS := -mcpu=cell -fno-pic -fno-strict-aliasing -std=gnu17 -O2 -Wall -Wextra \
-	-I$(XSDK)/include -I$(ZLIB_DIR) -I$(JPEG_DIR) -Ivulkan4xenon/third_party/vulkan-headers/include \
+	-I$(XSDK)/include -I$(ZLIB_DIR) -I$(JPEG_DIR) -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -Ivulkan4xenon/third_party/vulkan-headers/include \
 	-MMD -MP $(DEFINES) $(DEFINES_EXTRA) \
 	-DQ360_TITLE='"$(TITLE)"' -DQ360_ARGS='"$(ARGS)"'
 ifeq ($(DEBUG),1)
@@ -336,6 +342,8 @@ endif
 
 $(patsubst %.c,$(BUILD)/obj/%.o,$(ZLIB_SOURCES)): CFLAGS += -w
 $(patsubst %.c,$(BUILD)/obj/%.o,$(JPEG_SOURCES)): CFLAGS += -w
+$(patsubst %.c,$(BUILD)/obj/%.o,$(OGG_SOURCES)): CFLAGS += -w
+$(patsubst %.c,$(BUILD)/obj/%.o,$(VORBIS_SOURCES)): CFLAGS += -w -I$(VORBIS_DIR)/lib
 
 # The object list and xenon_vk.o's flags change with RENDERER, so this stamp forces the rebuild and relink.
 $(BUILD)/renderer.stamp: FORCE
