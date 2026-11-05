@@ -2064,6 +2064,9 @@ Touch all images to make sure they are resident
 static void RE_EndRegistration( void ) {
 #ifdef USE_VULKAN
 	vk_wait_idle();
+#ifdef __XSDK__
+	vk_create_all_pipelines();
+#endif
 	// command buffer is not in recording state at this stage
 	// so we can't issue RB_ShowImages() there
 #else

@@ -276,6 +276,7 @@ void vk_create_post_process_pipeline( int program_index, uint32_t width, uint32_
 void vk_create_pipelines( void );
 #ifdef __XSDK__
 void vk_create_pipelines_without_swapchain( void );
+void vk_create_all_pipelines( void );
 #endif
 
 //
