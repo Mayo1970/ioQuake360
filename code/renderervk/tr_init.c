@@ -137,6 +137,9 @@ cvar_t	*r_nobind;
 cvar_t	*r_singleShader;
 cvar_t	*r_roundImagesDown;
 cvar_t	*r_colorMipLevels;
+#ifdef __XSDK__
+cvar_t *x360_texDebug;
+#endif
 cvar_t	*r_picmip;
 cvar_t	*r_nomip;
 cvar_t	*r_showtris;
@@ -1538,6 +1541,10 @@ static void R_Register( void )
 	ri.Cvar_SetDescription( r_roundImagesDown, "When images are scaled, round images down instead of up." );
 	r_colorMipLevels = ri.Cvar_Get ("r_colorMipLevels", "0", CVAR_LATCH );
 	ri.Cvar_SetDescription( r_colorMipLevels, "Debugging tool to artificially color different mipmap levels so that they are more apparent." );
+#ifdef __XSDK__
+	x360_texDebug = ri.Cvar_Get( "x360_texDebug", "0", CVAR_LATCH );
+	ri.Cvar_SetDescription( x360_texDebug, "Xenon texture diagnostics (restart required): 0 off, 1 base mip only, 2 mip-coloured checkerboard, 3 upload log, 4 UV gradient." );
+#endif
 	r_detailTextures = ri.Cvar_Get( "r_detailtextures", "1", CVAR_ARCHIVE_ND | CVAR_LATCH );
 	ri.Cvar_SetDescription( r_detailTextures, "Enables usage of shader stages flagged as detail." );
 	r_texturebits = ri.Cvar_Get( "r_texturebits", "0", CVAR_ARCHIVE_ND | CVAR_LATCH );
@@ -1928,6 +1935,12 @@ void R_Init( void ) {
 	InitOpenGL();
 
 	R_InitImages();
+
+#ifdef __XSDK__
+	ri.Printf( PRINT_ALL, "X360 lighting: r_gamma=%.3f r_overBrightBits=%d r_mapOverBrightBits=%d r_intensity=%.3f effectiveOverbrightShift=%d gamma=%s\n",
+		r_gamma->value, r_overBrightBits->integer, r_mapOverBrightBits->integer, r_intensity->value,
+		tr.overbrightBits, vk.fboActive ? "post-process pass" : "software" );
+#endif
 
 	VarInfo();
 
