@@ -392,8 +392,7 @@ endef
 
 xsdk-patches:
 	$(call apply_patch,$(XSDK),patches/x360-sdk/0001-specialization-constants.patch)
-	$(call apply_patch,$(XSDK),patches/x360-sdk/0002-xam-show-keyboard-ui.patch)
-	$(call apply_patch,$(XSDK),patches/x360-sdk/0003-xex-title-resource.patch)
+	$(call apply_patch,$(XSDK),patches/x360-sdk/0002-xex-title-icon.patch)
 
 vulkan4xenon-patches:
 	$(call apply_patch,vulkan4xenon,$(VULKAN4XENON_PATCH))
@@ -424,8 +423,6 @@ $(ARGS_STAMP): FORCE
 
 $(BUILD)/obj/code/sys/xenon_main.o: $(ARGS_STAMP)
 $(BUILD)/obj/code/sys/xenon_vk.o: $(BUILD)/renderer.stamp
-# XAM_OVERLAPPED and XamShowKeyboardUI come from the SDK patch, so it must be applied first.
-$(BUILD)/obj/code/sys/xenon_input.o: | xsdk-patches
 ifeq ($(RENDERER),vk)
 $(BUILD)/obj/code/sys/xenon_vk.o: CFLAGS += -DQ360_RENDERER_VK
 $(BUILD)/obj/code/renderervk/vk.o: CFLAGS += -Ivulkan4xenon/include
@@ -487,7 +484,7 @@ $(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.st
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(LIBS)
 
-# The XDBF title resource needs elf2xex patch 0003, so xsdk-patches runs before the XEX is built.
+# The XDBF title icon needs patches/x360-sdk/0002-xex-title-icon.patch, so xsdk-patches runs before the XEX is built.
 $(BUILD)/$(TARGET).xex: $(BUILD)/$(TARGET).elf $(XSDK)/tools/elf2xex.py $(TITLE_ICON) | xsdk-patches
 	$(PYTHON) $(XSDK)/tools/elf2xex.py $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).xex \
 		--title-id $(TITLE_ID) --title-name "$(TITLE)" --title-icon $(TITLE_ICON)

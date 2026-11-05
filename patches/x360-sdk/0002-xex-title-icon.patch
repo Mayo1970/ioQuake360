@@ -1,0 +1,75 @@
+diff --git a/tools/elf2xex.py b/tools/elf2xex.py
+index f136029c22f45576f019f55d743c9a6720e6c3ae..845d7c3587b047dee3c3a7b18fc8b6002da30f8b 100644
+--- a/tools/elf2xex.py
++++ b/tools/elf2xex.py
+@@ -74,9 +74,11 @@ PE_SECTION_NAMES = {SECTION_CODE: b".text", SECTION_READONLY: b".rdata", SECTION
+ # util/xdbf_utils.h:26-77, xdbf_utils.cc:16-24, 63-87, 123-135). Xenia reads neither the database's version and free
+ # table nor the sizes in XSTC and XSTR.
+ XDBF_SECTION_METADATA = 1
++XDBF_SECTION_IMAGE = 2
+ XDBF_SECTION_STRING_TABLE = 3
+ XDBF_ID_XSTC = 0x58535443
+ XDBF_ID_TITLE = 0x8000
++XDBF_ID_TITLE_ICON = 0x8000
+ XDBF_VERSION = 0x10000
+ # xenia:src/xenia/xbox.h:330-332
+ LANGUAGE_ENGLISH = 1
+@@ -306,6 +308,35 @@ def add_title_name(image, headers_end, title_id, name):
+     return struct.pack(">I8sII", 4 + 16, f"{title_id:08X}".encode(), IMAGE_BASE + offset, len(database))
+ 
+ 
++def title_icon_database(name, icon):
++    xstc = struct.pack(">4sIII", b"XSTC", 1, 4, LANGUAGE_ENGLISH)
++    blocks = [(XDBF_SECTION_METADATA, XDBF_ID_XSTC, xstc), (XDBF_SECTION_IMAGE, XDBF_ID_TITLE_ICON, icon)]
++    if name is not None:
++        text = name.encode()
++        strings = struct.pack(">HH", XDBF_ID_TITLE, len(text)) + text
++        xstr = struct.pack(">4sIIH", b"XSTR", 1, 2 + len(strings), 1) + strings
++        blocks.append((XDBF_SECTION_STRING_TABLE, LANGUAGE_ENGLISH, xstr))
++    blocks.sort(key=lambda block: block[:2])
++    entries = b""
++    content = b""
++    for namespace, block_id, data in blocks:
++        entries += struct.pack(">HQII", namespace, block_id, len(content), len(data))
++        content += data
++    free = struct.pack(">II", len(content), 0xFFFFFFFF - len(content))
++    return struct.pack(">4sIIIII", b"XDBF", XDBF_VERSION, len(blocks), len(blocks), 1, 1) + entries + free + content
++
++
++def add_title_icon(sections, title_id, name, icon):
++    database = title_icon_database(name, icon)
++    if len(database) > PAGE_BYTES:
++        fail("the title icon database exceeds one 64 KB page")
++    # Keep the PNG-backed database out of the PE-header page reserved for title names.
++    end = max(s["address"] + s["size"] for s in sections if s["flags"] & SHF_ALLOC)
++    address = align(end, PAGE_BYTES)
++    sections.append({"name": ".xdbf", "flags": SHF_ALLOC, "address": address, "data": database, "size": len(database)})
++    return struct.pack(">I8sII", 4 + 16, f"{title_id:08X}".encode(), address, len(database))
++
++
+ def page_descriptors(image, runs):
+     # One descriptor per page, as a working XDK-built title has (user's console files).
+     page_types = [run["type"] for run in runs for _ in range(run["pages"])]
+@@ -439,15 +470,21 @@ def main():
+     parser.add_argument("--title-id", type=lambda text: int(text, 16), default=0x5853444B)
+     parser.add_argument("--stack-size", type=lambda text: int(text, 0), default=1024 * 1024)
+     parser.add_argument("--title-name", help="the name the dashboard shows")
++    parser.add_argument("--title-icon", type=Path, help="a PNG for the dashboard")
+     parser.add_argument("--version", type=parse_version, default=0, help="the title's version, as 1.2.300.4")
+     args = parser.parse_args()
+ 
+     entry, sections = read_elf(args.elf.read_bytes())
++    icon_resource = b""
++    if args.title_icon:
++        icon_resource = add_title_icon(sections, args.title_id, args.title_name, args.title_icon.read_bytes())
+     image, runs = build_image(sections)
+     libraries = read_imports(sections, image)
+     patch_import_records(image, libraries)
+     headers_end = pe_headers(image, runs, entry, args.stack_size)
+-    resources = add_title_name(image, headers_end, args.title_id, args.title_name) if args.title_name else b""
++    resources = icon_resource
++    if not resources and args.title_name:
++        resources = add_title_name(image, headers_end, args.title_id, args.title_name)
+     args.xex.write_bytes(build_xex(image, runs, entry, libraries, resources, args))
+ 
+ 

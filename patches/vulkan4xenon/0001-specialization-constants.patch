@@ -1,3 +1,15 @@
+diff --git a/Makefile b/Makefile
+index 5a901e68360deff447e7b471d7f77e28fcde94da..881dca38d794ecb3124a32faa7cb5ab7fd2a0bfa 100644
+--- a/Makefile
++++ b/Makefile
+@@ -37,6 +37,7 @@ LAYER_OBJECTS := $(patsubst src/%.c,$(BUILD)/src/%.o,$(LAYER_SOURCES))
+ # tests/shaders.c and src/blit_shaders.c come from tools/build_shaders.py, run by hand where glslang and xost are.
+ TEST_SOURCES := tests/main.c tests/harness.c tests/harness_scene.c tests/test_boot_logo.c tests/test_objects.c \
+ 	tests/test_triangle.c tests/test_packed_colour.c tests/test_texture.c tests/test_push_constants.c \
++	tests/test_specialization.c \
+ 	tests/test_uniform_buffers.c tests/test_indexed.c tests/test_depth_stencil.c tests/test_raster.c \
+ 	tests/test_render_to_texture.c tests/test_run_time_index.c tests/test_uploads.c tests/test_thin_textures.c \
+ 	tests/test_sampled_depth.c tests/test_anisotropy.c tests/test_aurora_points.c tests/test_lod.c \
 diff --git a/bench/shaders.c b/bench/shaders.c
 index 2c6051ea1d4c2fb45706d57be3aa347c39b1ab99..3d17dc57134a41118a04375180f4f2cd27137a96 100644
 --- a/bench/shaders.c
@@ -34,10 +46,10 @@ index 2c6051ea1d4c2fb45706d57be3aa347c39b1ab99..3d17dc57134a41118a04375180f4f2cd
  
  const V4xShaderBundle v4x_shader_bundle = { shaders, 12 };
 diff --git a/docs/SUPPORT.md b/docs/SUPPORT.md
-index b90c4219ef17a70d9e033db1f5fc6bf1e86611f3..b25dff03cf418a378f32611a37c6f9792ee43451 100644
+index 4cbc0982501271bea260e46634225db113b3151c..b068f76cbd89ccbab53c0b60994eb2ad669b0fd9 100644
 --- a/docs/SUPPORT.md
 +++ b/docs/SUPPORT.md
-@@ -214,7 +214,9 @@ Some are there to refuse, as the features they need aren't reported. Each logs w
+@@ -230,7 +230,9 @@ Some are there to refuse, as the features they need aren't reported. Each logs w
    `maxPerStageDescriptorSamplers`: 16 samplers in each stage never fit, and with all 16 bindings the two stages share
    26.
  - Graphics pipelines, otherwise `VK_ERROR_FEATURE_NOT_PRESENT`:
@@ -49,10 +61,10 @@ index b90c4219ef17a70d9e033db1f5fc6bf1e86611f3..b25dff03cf418a378f32611a37c6f979
      the instance's rate is fetched at its instance's element, at its binding's stride, by the instanced vertex shader
      such a pipeline takes (Shaders; xsdk:include/xsdk/shader.h, `per_instance`), its stream at the binding's start;
 diff --git a/include/vulkan4xenon.h b/include/vulkan4xenon.h
-index 6f2a4f2be2a9871a369fc2905cb08db01045daa6..90fc07eb868c3a34aaf634706278478a92a53af5 100644
+index 2d5b541dbeca98c99d567cfa81a49eae532b8329..8c86044e39aea988e004f9a4ac3fb7a40301e9d7 100644
 --- a/include/vulkan4xenon.h
 +++ b/include/vulkan4xenon.h
-@@ -61,6 +61,20 @@ typedef struct {
+@@ -65,6 +65,20 @@ typedef struct {
  	uint8_t plane;
  } V4xShaderClipPlane;
  
@@ -73,7 +85,7 @@ index 6f2a4f2be2a9871a369fc2905cb08db01045daa6..90fc07eb868c3a34aaf634706278478a
  typedef struct {
  	// FNV-1a over the SPIR-V's words, each taken as its four bytes low first, and the SPIR-V's size.
  	uint64_t spirv_hash;
-@@ -77,6 +91,9 @@ typedef struct {
+@@ -81,6 +95,9 @@ typedef struct {
  	// vertex shader that doesn't read gl_InstanceIndex (xost:docs/xsc.md, "Interface conventions"). Last, so a bundle
  	// written before it holds plain shaders alone.
  	bool instanced;
@@ -113,10 +125,10 @@ index aa34020721c07231db73166602cb72fe710adfe2..4a18a3c033dde750934261d60d35f9ad
  
  const V4xShaderBundle v4x_blit_bundle = { shaders, 9 };
 diff --git a/src/objects.h b/src/objects.h
-index 03d6f1f56e7c10f0175e5001562e428f6d1a93fe..3e33eeba320283ffa16cf9086fd3903cc6209fe6 100644
+index 5dc79af8cbdc5c7c27af5b931e876803234f3554..5c5207c0151169c5f0bfd592d2e720497ee3a24a 100644
 --- a/src/objects.h
 +++ b/src/objects.h
-@@ -339,6 +339,11 @@ typedef struct {
+@@ -382,6 +382,11 @@ typedef struct {
  	uint32_t offset_bytes;
  } ClipPlane;
  
@@ -128,7 +140,7 @@ index 03d6f1f56e7c10f0175e5001562e428f6d1a93fe..3e33eeba320283ffa16cf9086fd3903c
  // What each draw does with a resource, the draw plan's groups in order (Pipeline, plan): writes a push block's
  // registers; loads a uniform block, or reads it on the CPU where it can't start a group; writes a comparison's weights;
  // points a texture; and counts a loop.
-@@ -357,6 +362,10 @@ typedef struct {
+@@ -400,6 +405,10 @@ typedef struct {
  	XsdkShader pixel;
  	const V4xShader *vertex_source;
  	const V4xShader *pixel_source;
@@ -140,7 +152,7 @@ index 03d6f1f56e7c10f0175e5001562e428f6d1a93fe..3e33eeba320283ffa16cf9086fd3903c
  	uint32_t stream_count;
  	VkViewport viewport;
 diff --git a/src/pipeline.c b/src/pipeline.c
-index 311e07b53819c42e7ea883459f57bfa5a8571557..684248f37af8b5e02ed3dc892cbf9108e08e8e66 100644
+index ebc1345a9b68a5f3a124848420b290e59ac1f74a..f2d4f3c1c712b31f12d093973166e24f2f21abe0 100644
 --- a/src/pipeline.c
 +++ b/src/pipeline.c
 @@ -85,28 +85,96 @@ static bool instance_rate(const VkPipelineVertexInputStateCreateInfo *input)
@@ -247,7 +259,7 @@ index 311e07b53819c42e7ea883459f57bfa5a8571557..684248f37af8b5e02ed3dc892cbf9108
  }
  
  // Each binding becomes the next stream; each attribute an element of the vertex shader's layout, one at the instance's
-@@ -363,6 +431,8 @@ static VkResult find_clip_planes(Pipeline *pipeline)
+@@ -371,6 +439,8 @@ static VkResult find_clip_planes(Pipeline *pipeline)
  
  static void free_pipeline(const VkAllocationCallbacks *allocator, Pipeline *pipeline)
  {
@@ -256,7 +268,7 @@ index 311e07b53819c42e7ea883459f57bfa5a8571557..684248f37af8b5e02ed3dc892cbf9108
  	if (pipeline->vertex.microcode)
  		xsdk_shader_free(&pipeline->vertex);
  	if (pipeline->pixel.microcode)
-@@ -379,7 +449,7 @@ static VkResult create_pipeline(
+@@ -387,7 +457,7 @@ static VkResult create_pipeline(
  	const RenderPassSubpasses *const render_pass = v4x_object(info->renderPass);
  	VkResult result = v4x_pipeline_state(info, &render_pass->subpasses[info->subpass], pipeline);
  	if (result == VK_SUCCESS)
@@ -266,10 +278,10 @@ index 311e07b53819c42e7ea883459f57bfa5a8571557..684248f37af8b5e02ed3dc892cbf9108
  	if (result == VK_SUCCESS)
  		result = gather_resources(layout, pipeline->vertex_source, true, pipeline);
 diff --git a/src/queue.c b/src/queue.c
-index 7dd343ade08fb9d5be10e6a6a55cafad0afda025..57d804679a14250a6acd728752e0c0c0b9dae43e 100644
+index da5127d39442996f82f871b09595d3c962b7ccef..d1e871c9091b976a4fd5b03c14c632c3af4ae3f2 100644
 --- a/src/queue.c
 +++ b/src/queue.c
-@@ -45,6 +45,7 @@ typedef struct {
+@@ -47,6 +47,7 @@ typedef struct {
  	const Pipeline *pipeline;
  	const V4xShader *vertex_literals;
  	const V4xShader *pixel_literals;
@@ -277,7 +289,7 @@ index 7dd343ade08fb9d5be10e6a6a55cafad0afda025..57d804679a14250a6acd728752e0c0c0
  	VkViewport viewport;
  	VkRect2D scissor;
  	XsdkBlendState blends[V4X_MAX_COLOR_ATTACHMENTS];
-@@ -122,6 +123,17 @@ static void write_literals(const V4xShader *shader, bool vertex)
+@@ -131,6 +132,17 @@ static void write_literals(const V4xShader *shader, bool vertex)
  	}
  }
  
@@ -295,7 +307,7 @@ index 7dd343ade08fb9d5be10e6a6a55cafad0afda025..57d804679a14250a6acd728752e0c0c0
  // The first pixel whose centre a viewport edge at coordinate covers, or the one past the last.
  static int32_t first_pixel(float coordinate)
  {
-@@ -197,6 +209,10 @@ static void apply_pipeline(const Pipeline *pipeline, Replay *replay)
+@@ -208,6 +220,10 @@ static void apply_pipeline(const Pipeline *pipeline, Replay *replay)
  		write_literals(pipeline->vertex_source, true);
  	if (changed(replay, &applied->pixel_literals, &pipeline->pixel_source, sizeof pipeline->pixel_source))
  		write_literals(pipeline->pixel_source, false);
@@ -307,7 +319,7 @@ index 7dd343ade08fb9d5be10e6a6a55cafad0afda025..57d804679a14250a6acd728752e0c0c0
  	const uint32_t count = pipeline->blend_count;
  	const bool count_changed = changed(replay, &applied->blend_count, &count, sizeof count);
 diff --git a/src/shader.c b/src/shader.c
-index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982dbe406880a 100644
+index 3fd30c818a6c576c2a3bd94e7e949d28942c0835..4a6d41c658ac5317b57eabf23f90a08dc0f83801 100644
 --- a/src/shader.c
 +++ b/src/shader.c
 @@ -30,9 +30,9 @@ enum {
@@ -330,7 +342,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  	// Compiled with xost's instanced option, which the shader is kept under too.
  	uint32_t instanced;
  } CacheHeader;
-@@ -131,7 +132,9 @@ static bool layer_takes(const XsdkXscShader *compiled)
+@@ -133,7 +134,9 @@ static bool layer_takes(const XsdkXscShader *compiled)
  		const bool fixed =
  			need->kind == XSDK_XSC_FIXED_LOOP && need->regs <= V4X_MAX_LOOP_PASSES && need->reg < XSDK_LOOP_CONSTANTS;
  		const bool plane = need->kind == XSDK_XSC_CLIP_PLANE && need->reg <= MAX_RESOURCE_REGISTER;
@@ -341,7 +353,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  			return false;
  	}
  	for (size_t i = 0; i < compiled->resource_count; i++) {
-@@ -148,7 +151,8 @@ static bool layer_takes(const XsdkXscShader *compiled)
+@@ -150,7 +153,8 @@ static bool layer_takes(const XsdkXscShader *compiled)
  static size_t tail_bytes(const CacheHeader *sizes)
  {
  	return (sizes->container_size_bytes + 3) / 4 * sizeof(uint32_t) + sizes->literal_count * sizeof(V4xShaderLiteral) +
@@ -351,7 +363,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  }
  
  // Where a shader's parts sit in its allocation, for whoever fills them.
-@@ -157,6 +161,7 @@ typedef struct {
+@@ -159,6 +163,7 @@ typedef struct {
  	V4xShaderLiteral *literals;
  	V4xShaderResource *resources;
  	V4xShaderClipPlane *clip_planes;
@@ -359,7 +371,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  } ShaderParts;
  
  // A shader in one allocation, its parts pointing into the tail, which the caller fills.
-@@ -170,6 +175,7 @@ static V4xShader *new_shader(const VkAllocationCallbacks *allocator, const Cache
+@@ -172,6 +177,7 @@ static V4xShader *new_shader(const VkAllocationCallbacks *allocator, const Cache
  	parts->literals = (V4xShaderLiteral *)(parts->container + (sizes->container_size_bytes + 3) / 4);
  	parts->resources = (V4xShaderResource *)(parts->literals + sizes->literal_count);
  	parts->clip_planes = (V4xShaderClipPlane *)(parts->resources + sizes->resource_count);
@@ -367,7 +379,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  	*shader = (V4xShader){ .spirv_hash = sizes->spirv_hash,
  		.spirv_size_bytes = sizes->spirv_size_bytes,
  		.container = parts->container,
-@@ -180,7 +186,9 @@ static V4xShader *new_shader(const VkAllocationCallbacks *allocator, const Cache
+@@ -182,7 +188,9 @@ static V4xShader *new_shader(const VkAllocationCallbacks *allocator, const Cache
  		.resource_count = sizes->resource_count,
  		.clip_planes = parts->clip_planes,
  		.clip_plane_count = sizes->clip_plane_count,
@@ -378,7 +390,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  	return shader;
  }
  
-@@ -188,7 +196,7 @@ static CacheHeader header_of(const V4xShader *shader)
+@@ -190,7 +198,7 @@ static CacheHeader header_of(const V4xShader *shader)
  {
  	return (CacheHeader){ CACHE_MAGIC, CACHE_LAYOUT, shader->spirv_hash, shader->spirv_size_bytes,
  		shader->container_size_bytes, shader->literal_count, shader->resource_count, shader->clip_plane_count,
@@ -387,7 +399,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  }
  
  static uint32_t needs_of(const XsdkXscShader *compiled, XsdkXscNeedKind kind)
-@@ -199,6 +207,22 @@ static uint32_t needs_of(const XsdkXscShader *compiled, XsdkXscNeedKind kind)
+@@ -201,6 +209,22 @@ static uint32_t needs_of(const XsdkXscShader *compiled, XsdkXscNeedKind kind)
  	return count;
  }
  
@@ -410,7 +422,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  // The literals, then the resources, each loop's count among them after the blocks and samplers, then the clip planes,
  // as the bundle has them.
  static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const XsdkXscShader *compiled, uint64_t hash,
-@@ -208,7 +232,7 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
+@@ -210,7 +234,7 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
  		needs_of(compiled, XSDK_XSC_LITERAL),
  		(uint32_t)compiled->resource_count + needs_of(compiled, XSDK_XSC_BLOCK_LOOP) +
  			needs_of(compiled, XSDK_XSC_FIXED_LOOP),
@@ -419,7 +431,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  	ShaderParts parts;
  	V4xShader *const shader = new_shader(allocator, &sizes, &parts);
  	if (!shader)
-@@ -222,6 +246,7 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
+@@ -224,6 +248,7 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
  	uint32_t literal = 0;
  	uint32_t resource = (uint32_t)compiled->resource_count;
  	uint32_t plane = 0;
@@ -427,7 +439,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  	for (size_t i = 0; i < compiled->need_count; i++) {
  		const XsdkXscNeed *const need = &compiled->needs[i];
  		if (need->kind == XSDK_XSC_BLOCK_LOOP) {
-@@ -240,6 +265,11 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
+@@ -242,6 +267,11 @@ static V4xShader *shader_from(const VkAllocationCallbacks *allocator, const Xsdk
  			parts.clip_planes[plane++] = (V4xShaderClipPlane){ (uint16_t)need->reg, (uint8_t)need->regs };
  			continue;
  		}
@@ -439,7 +451,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  		parts.literals[literal++] = (V4xShaderLiteral){ need->reg,
  			{ (float)need->value[0], (float)need->value[1], (float)need->value[2], (float)need->value[3] } };
  	}
-@@ -297,7 +327,7 @@ static V4xShader *read_cached(VkDevice device, uint64_t hash, uint32_t size_byte
+@@ -299,7 +329,7 @@ static V4xShader *read_cached(VkDevice device, uint64_t hash, uint32_t size_byte
  		header.layout == CACHE_LAYOUT && header.spirv_hash == hash && header.spirv_size_bytes == size_bytes &&
  		header.instanced == instanced && header.container_size_bytes < MAX_CACHED_BYTES &&
  		header.literal_count < MAX_CACHED_BYTES && header.resource_count < MAX_CACHED_BYTES &&
@@ -449,7 +461,7 @@ index 791be520c64dda4aaa5b8fed655b9a2f6e8283ef..bf986f17c30303f50a31ed1f4f6982db
  	ShaderParts parts;
  	V4xShader *shader = sound && (size_t)info.st_size == sizeof header + tail
 diff --git a/tests/harness.h b/tests/harness.h
-index 002da85ca423feab0e13ef2c816e0a2b6b4026d1..69fa6fd7625b4e25e10e1927901267940a306b12 100644
+index 35e41825c2476fb669335acb7cb6e8b885bc42e9..ecb2a19881d0fd05627e2f4ab65de2bece710730 100644
 --- a/tests/harness.h
 +++ b/tests/harness.h
 @@ -68,6 +68,8 @@ typedef struct {
@@ -462,10 +474,10 @@ index 002da85ca423feab0e13ef2c816e0a2b6b4026d1..69fa6fd7625b4e25e10e192790126794
  	const VkPipelineInputAssemblyStateCreateInfo *assembly;
  	const VkPipelineRasterizationStateCreateInfo *raster;
 diff --git a/tests/harness_scene.c b/tests/harness_scene.c
-index bb1749544975dea3fc2166bbb808726e80562504..68d0f52fcb7819c919185035dd7cd09c22742309 100644
+index eb103611602dabe4ea217d3f31a269cbb794c3ef..858a72e2a5c3fbb0fc764b557a14d94466189099 100644
 --- a/tests/harness_scene.c
 +++ b/tests/harness_scene.c
-@@ -203,11 +203,13 @@ static VkResult create_pipeline(const Harness *harness, const HarnessPipeline *s
+@@ -210,11 +210,13 @@ static VkResult create_pipeline(const Harness *harness, const HarnessPipeline *s
  		{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
  			.stage = VK_SHADER_STAGE_VERTEX_BIT,
  			.module = modules[0],
@@ -482,7 +494,7 @@ index bb1749544975dea3fc2166bbb808726e80562504..68d0f52fcb7819c919185035dd7cd09c
  	const VkGraphicsPipelineCreateInfo info = {
  		.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 diff --git a/tests/main.c b/tests/main.c
-index 7e4fa9a9bb0f215f39853a529e9bc43b37dd2506..93b59a838d6c0f6908666b3af1d0fac073e5d216 100644
+index e2fe12de4d64c06cb79f449ea7a8c752b4ede5e6..fe64c59de5f455fc77f106eb83f8bc1ef9859cc2 100644
 --- a/tests/main.c
 +++ b/tests/main.c
 @@ -30,6 +30,7 @@ int main(void)
@@ -494,10 +506,10 @@ index 7e4fa9a9bb0f215f39853a529e9bc43b37dd2506..93b59a838d6c0f6908666b3af1d0fac0
  		test_vertex_formats(&harness);
  		test_texture(&harness);
 diff --git a/tests/shaders.c b/tests/shaders.c
-index 02c89be53860a8a3018d579ca4df551ee63999da..a4747e532bf65bc158ee987b35dd44805dbf25ad 100644
+index a13583241dcd5b89a761117288e04195445c5a23..084dd7199d0c0c1adc23d3dce9be71f8f3b002b2 100644
 --- a/tests/shaders.c
 +++ b/tests/shaders.c
-@@ -13114,119 +13114,119 @@ static const V4xShaderResource volume_frag_resources[] = {
+@@ -13292,121 +13292,121 @@ static const V4xShaderResource volume_frag_resources[] = {
  };
  
  static const V4xShader shaders[] = {
@@ -613,6 +625,8 @@ index 02c89be53860a8a3018d579ca4df551ee63999da..a4747e532bf65bc158ee987b35dd4480
 -	{ 0x176210E07BE84ED8ull, 1428, vertex_alpha_vert_instanced_container, 560, NULL, 0, vertex_alpha_vert_instanced_resources, 2, NULL, 0, true },
 -	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_container, 448, NULL, 0, vertex_format_vert_resources, 1, NULL, 0, false },
 -	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_instanced_container, 544, NULL, 0, vertex_format_vert_instanced_resources, 2, NULL, 0, true },
+-	{ 0x1786761B85DF69C5ull, 1688, vertex_index_vert_container, 788, vertex_index_vert_literals, 5, vertex_index_vert_resources, 2, NULL, 0, false },
+-	{ 0x1786761B85DF69C5ull, 1688, vertex_index_vert_instanced_container, 896, vertex_index_vert_instanced_literals, 5, vertex_index_vert_instanced_resources, 3, NULL, 0, true },
 -	{ 0xD4A7E8C9F4301714ull, 588, volume_frag_container, 208, NULL, 0, volume_frag_resources, 1, NULL, 0, false },
 +	{ 0x0C45B38CC0E62577ull, 1448, aurora_attr_defaults_frag_container, 272, NULL, 0, aurora_attr_defaults_frag_resources, 1, NULL, 0, false, NULL, 0 },
 +	{ 0xE1E4E34C5F4DAB7Eull, 5364, aurora_attr_defaults_vert_container, 1968, aurora_attr_defaults_vert_literals, 7, aurora_attr_defaults_vert_resources, 2, NULL, 0, false, NULL, 0 },
@@ -726,95 +740,12 @@ index 02c89be53860a8a3018d579ca4df551ee63999da..a4747e532bf65bc158ee987b35dd4480
 +	{ 0x176210E07BE84ED8ull, 1428, vertex_alpha_vert_instanced_container, 560, NULL, 0, vertex_alpha_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
 +	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_container, 448, NULL, 0, vertex_format_vert_resources, 1, NULL, 0, false, NULL, 0 },
 +	{ 0x17E35B5362415420ull, 1392, vertex_format_vert_instanced_container, 544, NULL, 0, vertex_format_vert_instanced_resources, 2, NULL, 0, true, NULL, 0 },
++	{ 0x1786761B85DF69C5ull, 1688, vertex_index_vert_container, 788, vertex_index_vert_literals, 5, vertex_index_vert_resources, 2, NULL, 0, false, NULL, 0 },
++	{ 0x1786761B85DF69C5ull, 1688, vertex_index_vert_instanced_container, 896, vertex_index_vert_instanced_literals, 5, vertex_index_vert_instanced_resources, 3, NULL, 0, true, NULL, 0 },
 +	{ 0xD4A7E8C9F4301714ull, 588, volume_frag_container, 208, NULL, 0, volume_frag_resources, 1, NULL, 0, false, NULL, 0 },
  };
  
- const V4xShaderBundle v4x_shader_bundle = { shaders, 113 };
-diff --git a/tests/tests.h b/tests/tests.h
-index 558818fad5db6d68df25808da201aaa008a6fe8f..1144f9a051332603f6976c2949996290094f1027 100644
---- a/tests/tests.h
-+++ b/tests/tests.h
-@@ -43,6 +43,7 @@ void test_occlusion(const Harness *harness);
- void test_events(const Harness *harness);
- // A triangle through Vulkan, checked on the image the display shows.
- void test_triangle(const Harness *harness);
-+void test_specialization(const Harness *harness);
- // The triangle again, its shaders read back from the layer's cache by a second device (milestone 13).
- void test_triangle_from_cache(const Harness *harness);
- // The triangle with 8-bit colours packed in a word, as Aurora decodes vertex colours (milestone 10).
-diff --git a/tools/build_shaders.py b/tools/build_shaders.py
-index ab65b6a5eb752757bf8652b81e840f043afd2291..e294a55c25031eafc5f913e0b6500bfb3bcf7d11 100644
---- a/tools/build_shaders.py
-+++ b/tools/build_shaders.py
-@@ -32,6 +32,8 @@ RESOURCE_KINDS = {"push": "V4X_RESOURCE_PUSH_CONSTANTS", "uniform": "V4X_RESOURC
-                   "sampler": "V4X_RESOURCE_SAMPLER", "push_loop": "V4X_RESOURCE_PUSH_LOOP",
-                   "uniform_loop": "V4X_RESOURCE_UNIFORM_LOOP", "comparison": "V4X_RESOURCE_COMPARISON",
-                   "instance": "V4X_RESOURCE_INSTANCE", "fixed_loop": "V4X_RESOURCE_FIXED_LOOP"}
-+SPECIALIZATION_TYPES = {"bool": "V4X_SPECIALIZATION_BOOL", "int": "V4X_SPECIALIZATION_INT",
-+                        "uint": "V4X_SPECIALIZATION_UINT", "float": "V4X_SPECIALIZATION_FLOAT"}
- DEFAULT_BUNDLE = "v4x_shader_bundle"
- FNV_OFFSET_BASIS = 0xCBF29CE484222325
- FNV_PRIME = 0x100000001B3
-@@ -72,6 +74,7 @@ def lower(xost, spirv_bytes, source, optimize=False, instanced=False):
-     resources = [resource + (0, 0) for resource in resources]
-     literals = []
-     clip_planes = []
-+    specializations = []
-     for entry in manifest:
-         # A hardware loop's count, which the layer reads from the block for each draw, and its i's start and step,
-         # which the layer works its passes out from: a resource of its own.
-@@ -84,11 +87,14 @@ def lower(xost, spirv_bytes, source, optimize=False, instanced=False):
-             resources.append(("fixed_loop", 0, 0, passes, loop, 0, 0))
-         elif entry[0] == "clip":
-             clip_planes.append((entry[2], entry[1]))
-+        elif entry[0] == "spec":
-+            _, reg, constant_id, scalar_type, default_value = entry
-+            specializations.append((reg, constant_id, scalar_type, default_value))
-         elif len(entry) != 2:
-             sys.exit(f"{source}: xost wants a constant the layer doesn't set yet: {entry}")
-         else:
-             literals.append(entry)
--    return container, literals, resources, clip_planes
-+    return container, literals, resources, clip_planes, specializations
- 
- 
- def c_name(source, prefix):
-@@ -149,10 +155,19 @@ def write_outputs(output, shaders, sources, bundle):
-             for reg, plane in shader["clip_planes"]:
-                 source.append(f"\t{{ {reg}, {plane} }},")
-             source += ["};", ""]
-+        specializations = "NULL"
-+        if shader["specializations"]:
-+            specializations = f"{name}_specializations"
-+            source.append(f"static const V4xShaderSpecialization {specializations}[] = {{")
-+            for reg, constant_id, scalar_type, default_value in shader["specializations"]:
-+                source.append(f"\t{{ {reg}, {constant_id}, {SPECIALIZATION_TYPES[scalar_type]}, "
-+                              f"{float_literal(default_value)} }},")
-+            source += ["};", ""]
-         entries.append(f"\t{{ 0x{shader['hash']:016X}ull, {len(shader['spirv'])}, {name}_container, "
-                        f"{len(shader['container'])}, {literals}, {len(shader['literals'])}, {resources}, "
-                        f"{len(shader['resources'])}, {clip_planes}, {len(shader['clip_planes'])}, "
--                       f"{'true' if instanced else 'false'} }},")
-+                       f"{'true' if instanced else 'false'}, {specializations}, "
-+                       f"{len(shader['specializations'])} }},")
-     source += ["static const V4xShader shaders[] = {"] + entries + ["};", ""]
-     source.append(f"const V4xShaderBundle {bundle} = {{ shaders, {len(shaders)} }};")
-     header += ["", "#endif"]
-@@ -180,11 +195,12 @@ def main():
-         for source in args.sources:
-             spirv_bytes = compile_spirv(glslang, source, directory)
-             for instanced in (False, True):
--                container, literals, resources, clip_planes = lower(args.xost.resolve(), spirv_bytes, source,
--                                                                    args.optimize, instanced)
-+                container, literals, resources, clip_planes, specializations = lower(
-+                    args.xost.resolve(), spirv_bytes, source, args.optimize, instanced)
-                 shaders.append({"name": c_name(source, args.prefix) + ("_instanced" if instanced else ""),
-                                 "spirv": spirv_bytes, "hash": fnv1a_64(spirv_bytes), "container": container,
-                                 "literals": literals, "resources": resources, "clip_planes": clip_planes,
-+                                "specializations": specializations,
-                                 "instanced": instanced})
-                 # A fragment shader has no variant, nor does a vertex shader already lowered instanced.
-                 if source.suffix != ".vert" or any(resource[0] == "instance" for resource in resources):
+ const V4xShaderBundle v4x_shader_bundle = { shaders, 115 };
 diff --git a/tests/test_specialization.c b/tests/test_specialization.c
 new file mode 100644
 index 0000000000000000000000000000000000000000..071239b8b72099d25d8f6253d57ba1112951d5ad
@@ -886,15 +817,88 @@ index 0000000000000000000000000000000000000000..071239b8b72099d25d8f6253d57ba111
 +	if (layout)
 +		vkDestroyPipelineLayout(harness->device, layout, NULL);
 +}
-diff --git a/Makefile b/Makefile
-index 671453f..d78bcd4 100644
---- a/Makefile
-+++ b/Makefile
-@@ -32,6 +32,7 @@ LAYER_OBJECTS := $(patsubst src/%.c,$(BUILD)/src/%.o,$(LAYER_SOURCES))
- # tests/shaders.c and src/blit_shaders.c come from tools/build_shaders.py, run by hand where glslang and xost are.
- TEST_SOURCES := tests/main.c tests/harness.c tests/harness_scene.c tests/test_boot_logo.c tests/test_objects.c \
- 	tests/test_triangle.c tests/test_packed_colour.c tests/test_texture.c tests/test_push_constants.c \
-+	tests/test_specialization.c \
- 	tests/test_uniform_buffers.c tests/test_indexed.c tests/test_depth_stencil.c tests/test_raster.c \
- 	tests/test_render_to_texture.c tests/test_run_time_index.c tests/test_uploads.c tests/test_thin_textures.c \
- 	tests/test_sampled_depth.c tests/test_anisotropy.c tests/test_aurora_points.c tests/test_lod.c \
+diff --git a/tests/tests.h b/tests/tests.h
+index e4670a2cfaa280ccec76767be1b745c630a35a06..39d6b558087d444d3ba13b68df0d883557e2cd0b 100644
+--- a/tests/tests.h
++++ b/tests/tests.h
+@@ -49,6 +49,7 @@ void test_occlusion(const Harness *harness);
+ void test_events(const Harness *harness);
+ // A triangle through Vulkan, checked on the image the display shows.
+ void test_triangle(const Harness *harness);
++void test_specialization(const Harness *harness);
+ // The triangle again, its shaders read back from the layer's cache by a second device (milestone 13).
+ void test_triangle_from_cache(const Harness *harness);
+ // A device of its own with four swapchain images, where a frame two refreshes late costs no vblank.
+diff --git a/tools/build_shaders.py b/tools/build_shaders.py
+index 8f7b662b525c5eb5987c271a543c0b72850f4a2c..3ecc4f7bd87de5d3f607290fc9b78c9066308eea 100644
+--- a/tools/build_shaders.py
++++ b/tools/build_shaders.py
+@@ -38,6 +38,8 @@ RESOURCE_KINDS = {"push": "V4X_RESOURCE_PUSH_CONSTANTS", "uniform": "V4X_RESOURC
+                   "uniform_loop": "V4X_RESOURCE_UNIFORM_LOOP", "comparison": "V4X_RESOURCE_COMPARISON",
+                   "instance": "V4X_RESOURCE_INSTANCE", "fixed_loop": "V4X_RESOURCE_FIXED_LOOP",
+                   "vertex_base": "V4X_RESOURCE_VERTEX_BASE"}
++SPECIALIZATION_TYPES = {"bool": "V4X_SPECIALIZATION_BOOL", "int": "V4X_SPECIALIZATION_INT",
++                        "uint": "V4X_SPECIALIZATION_UINT", "float": "V4X_SPECIALIZATION_FLOAT"}
+ DEFAULT_BUNDLE = "v4x_shader_bundle"
+ FNV_OFFSET_BASIS = 0xCBF29CE484222325
+ FNV_PRIME = 0x100000001B3
+@@ -94,6 +96,7 @@ def lower(xost, spirv_bytes, source, optimize=False, instanced=False):
+     resources = [resource + (0, 0) for resource in resources]
+     literals = []
+     clip_planes = []
++    specializations = []
+     for entry in manifest:
+         # A hardware loop's count, which the layer reads from the block for each draw, and its i's start and step,
+         # which the layer works its passes out from: a resource of its own.
+@@ -106,11 +109,14 @@ def lower(xost, spirv_bytes, source, optimize=False, instanced=False):
+             resources.append(("fixed_loop", 0, 0, passes, loop, 0, 0))
+         elif entry[0] == "clip":
+             clip_planes.append((entry[2], entry[1]))
++        elif entry[0] == "spec":
++            _, reg, constant_id, scalar_type, default_value = entry
++            specializations.append((reg, constant_id, scalar_type, default_value))
+         elif len(entry) != 2:
+             sys.exit(f"{source}: xost wants a constant the layer doesn't set yet: {entry}")
+         else:
+             literals.append(entry)
+-    return container, literals, resources, clip_planes
++    return container, literals, resources, clip_planes, specializations
+ 
+ 
+ def c_name(source, prefix):
+@@ -171,10 +177,19 @@ def write_outputs(output, shaders, sources, bundle):
+             for reg, plane in shader["clip_planes"]:
+                 source.append(f"\t{{ {reg}, {plane} }},")
+             source += ["};", ""]
++        specializations = "NULL"
++        if shader["specializations"]:
++            specializations = f"{name}_specializations"
++            source.append(f"static const V4xShaderSpecialization {specializations}[] = {{")
++            for reg, constant_id, scalar_type, default_value in shader["specializations"]:
++                source.append(f"\t{{ {reg}, {constant_id}, {SPECIALIZATION_TYPES[scalar_type]}, "
++                              f"{float_literal(default_value)} }},")
++            source += ["};", ""]
+         entries.append(f"\t{{ 0x{shader['hash']:016X}ull, {len(shader['spirv'])}, {name}_container, "
+                        f"{len(shader['container'])}, {literals}, {len(shader['literals'])}, {resources}, "
+                        f"{len(shader['resources'])}, {clip_planes}, {len(shader['clip_planes'])}, "
+-                       f"{'true' if instanced else 'false'} }},")
++                       f"{'true' if instanced else 'false'}, {specializations}, "
++                       f"{len(shader['specializations'])} }},")
+     source += ["static const V4xShader shaders[] = {"] + entries + ["};", ""]
+     source.append(f"const V4xShaderBundle {bundle} = {{ shaders, {len(shaders)} }};")
+     header += ["", "#endif"]
+@@ -205,11 +220,12 @@ def main():
+             else:
+                 spirv_bytes = compile_spirv(glslang, source, directory)
+             for instanced in (False, True):
+-                container, literals, resources, clip_planes = lower(args.xost.resolve(), spirv_bytes, source,
+-                                                                    args.optimize, instanced)
++                container, literals, resources, clip_planes, specializations = lower(
++                    args.xost.resolve(), spirv_bytes, source, args.optimize, instanced)
+                 shaders.append({"name": c_name(source, args.prefix) + ("_instanced" if instanced else ""),
+                                 "spirv": spirv_bytes, "hash": fnv1a_64(spirv_bytes), "container": container,
+                                 "literals": literals, "resources": resources, "clip_planes": clip_planes,
++                                "specializations": specializations,
+                                 "instanced": instanced})
+                 # A fragment shader has no variant, nor does a vertex shader already lowered instanced.
+                 if stage_suffix(source) != ".vert" or any(resource[0] == "instance" for resource in resources):

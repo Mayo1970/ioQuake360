@@ -1,8 +1,8 @@
 diff --git a/include/xsdk/xsc.h b/include/xsdk/xsc.h
-index 32d00dd88e8765b826ccfe616cf5b6b89e3ee8a3..55e22872a6017622bba102023f009428865b2240 100644
+index 5b64b41e5945ea2019fd5dba81d4a73c802b528c..b97f2fb16a9323bbf9484f2ec8944da8ea8a6b3f 100644
 --- a/include/xsdk/xsc.h
 +++ b/include/xsdk/xsc.h
-@@ -60,8 +60,17 @@ typedef enum {
+@@ -67,8 +67,17 @@ typedef enum {
  	XSDK_XSC_CLIP_PLANE,
  	// Loop constant reg for loops whose count is data, regs passes, 255, from aL 0 by 1: each leaves on its condition.
  	XSDK_XSC_FIXED_LOOP,
@@ -20,7 +20,7 @@ index 32d00dd88e8765b826ccfe616cf5b6b89e3ee8a3..55e22872a6017622bba102023f009428
  typedef enum {
  	XSDK_XSC_PUSH_CONSTANTS,
  	XSDK_XSC_UNIFORM_BUFFER,
-@@ -89,6 +98,9 @@ typedef struct {
+@@ -100,6 +109,9 @@ typedef struct {
  	// A block loop's i: where it starts, and what each pass adds, 1 or more.
  	int32_t start;
  	int32_t step;
@@ -31,10 +31,10 @@ index 32d00dd88e8765b826ccfe616cf5b6b89e3ee8a3..55e22872a6017622bba102023f009428
  
  // Where a block's registers, a sampler's fetch constant, a comparison's register or the instance group landed.
 diff --git a/src/xsc_lower.c b/src/xsc_lower.c
-index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcbe761acc9 100644
+index a7cb2f55bc3ed29618391e15ba6d9379e8bea0b2..130a34a1f51b6bc156b6000278fe02f965f2523f 100644
 --- a/src/xsc_lower.c
 +++ b/src/xsc_lower.c
-@@ -171,7 +171,13 @@ int64_t xsdk_xsc_vec_size(XscLower *l, uint32_t ssa)
+@@ -181,7 +181,13 @@ int64_t xsdk_xsc_vec_size(XscLower *l, uint32_t ssa)
  double xsdk_xsc_scalar_const(XscLower *l, uint32_t ssa)
  {
  	const XscInstr *const ins = xsdk_xsc_lower_result(l, ssa);
@@ -49,7 +49,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  }
  
  static bool is_zero(double v)
-@@ -232,8 +238,14 @@ static bool int_fold_at(XscLower *l, uint32_t ssa, int64_t *value)
+@@ -242,8 +248,14 @@ static bool int_fold_at(XscLower *l, uint32_t ssa, int64_t *value)
  		const uint32_t src = xsdk_xsc_operand(ins, 0);
  		return src < l->m->id_limit && l->local_store[src] && int_fold(l, l->local_store[src], value);
  	}
@@ -66,7 +66,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		return true;
  	}
  	if (op == SPV_CONVERT_F_TO_S) {
-@@ -276,7 +288,9 @@ static bool float_fold_at(XscLower *l, uint32_t ssa, double *value)
+@@ -286,7 +298,9 @@ static bool float_fold_at(XscLower *l, uint32_t ssa, double *value)
  		const uint32_t src = xsdk_xsc_operand(ins, 0);
  		return src < l->m->id_limit && l->local_store[src] && float_fold(l, l->local_store[src], value);
  	}
@@ -77,7 +77,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		*value = xsdk_xsc_scalar_const(l, ssa);
  		return true;
  	}
-@@ -352,7 +366,8 @@ static int const_vector(XscLower *l, uint32_t ssa, double *vals, int capacity)
+@@ -362,7 +376,8 @@ static int const_vector(XscLower *l, uint32_t ssa, double *vals, int capacity)
  	const XscInstr *const ins = xsdk_xsc_by_result(l->m, ssa);
  	if (!ins)
  		return -1;
@@ -87,26 +87,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		vals[0] = xsdk_xsc_scalar_const(l, ssa);
  		return 1;
  	}
-@@ -612,7 +627,7 @@ bool xsdk_xsc_const_scalar(XscLower *l, uint32_t ssa, double *value)
- 	const XscInstr *const ins = xsdk_xsc_lower_result(l, ssa);
- 	if (!ins)
- 		return false;
--	if (ins->opcode == SPV_CONSTANT) {
-+	if ((ins->opcode == SPV_CONSTANT || ins->opcode == SPV_SPEC_CONSTANT) && !xsdk_xsc_specialization(l->si, ssa)) {
- 		*value = xsdk_xsc_scalar_const(l, ssa);
- 		return true;
- 	}
-@@ -625,7 +640,8 @@ bool xsdk_xsc_const_scalar(XscLower *l, uint32_t ssa, double *value)
- 		const XscInstr *const part = same ? xsdk_xsc_lower_result(l, ops[0]) : NULL;
- 		if (xsc_failed(l))
- 			return false;
--		if (part && part->opcode == SPV_CONSTANT) {
-+		if (part && (part->opcode == SPV_CONSTANT || part->opcode == SPV_SPEC_CONSTANT) &&
-+			!xsdk_xsc_specialization(l->si, ops[0])) {
- 			*value = xsdk_xsc_scalar_const(l, ops[0]);
- 			return true;
- 		}
-@@ -637,7 +653,7 @@ bool xsdk_xsc_const_scalar(XscLower *l, uint32_t ssa, double *value)
+@@ -685,7 +700,7 @@ int64_t xsdk_xsc_recip(XscLower *l, XscOperand opnd, int64_t n)
  static bool const_val(XscLower *l, uint32_t ssa, int64_t *value)
  {
  	const XscInstr *const c = xsdk_xsc_by_result(l->m, ssa);
@@ -115,7 +96,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		return xsdk_xsc_lower_refuse(l, "%%%u is not an int constant", (unsigned)ssa);
  	*value = xsdk_xsc_operand(c, 0);
  	return true;
-@@ -716,6 +732,9 @@ static XscOperand int_divide(XscLower *l, const XscInstr *ins)
+@@ -875,6 +890,9 @@ static XscOperand int_load(XscLower *l, uint32_t ssa, const XscInstr *ins)
  
  static XscOperand int_operand_of(XscLower *l, uint32_t ssa)
  {
@@ -125,7 +106,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  	int64_t cv;
  	if (xsdk_xsc_int_const(l, ssa, &cv)) {
  		const int64_t reg = xsdk_xsc_literal_splat(l, (double)cv);
-@@ -1283,8 +1302,11 @@ static XscOperand vector_shuffle(XscLower *l, const XscInstr *ins)
+@@ -1526,8 +1544,11 @@ static XscOperand vector_shuffle(XscLower *l, const XscInstr *ins)
  static XscOperand constant_operand(XscLower *l, const XscInstr *ins, uint32_t ssa)
  {
  	double values[4] = { 0, 0, 0, 0 };
@@ -139,7 +120,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		values[0] = values[1] = values[2] = values[3] = v;
  	} else {
  		uint32_t count;
-@@ -1314,7 +1336,8 @@ static XscOperand construct_operand(XscLower *l, const XscInstr *ins)
+@@ -1562,7 +1583,8 @@ static XscOperand construct_operand(XscLower *l, const XscInstr *ins)
  		const XscInstr *const part = xsdk_xsc_lower_result(l, ops[0]);
  		if (!part)
  			return (XscOperand){ 0 };
@@ -149,7 +130,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  			return xsdk_xsc_lower_operand(l, ops[0]);
  		const int64_t reg = xsdk_xsc_literal_splat(l, xsdk_xsc_scalar_const(l, ops[0]));
  		return reg == XSC_NONE ? (XscOperand){ 0 } : xsc_const(reg);
-@@ -1360,6 +1383,7 @@ static XscOperand value_operand(XscLower *l, uint32_t ssa, const XscInstr *ins)
+@@ -1618,6 +1640,7 @@ static XscOperand value_operand(XscLower *l, uint32_t ssa, const XscInstr *ins)
  	case SPV_F_MOD:
  		return from_reg(fmod_value(l, a, b, XSC_NONE, false));
  	case SPV_CONSTANT:
@@ -157,7 +138,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  	case SPV_CONSTANT_COMPOSITE:
  		return constant_operand(l, ins, ssa);
  	case SPV_COMPOSITE_CONSTRUCT:
-@@ -1437,6 +1461,9 @@ static bool is_comparison(uint32_t op)
+@@ -1699,6 +1722,9 @@ static bool is_comparison(uint32_t op)
  static XscOperand operand_of(XscLower *l, uint32_t ssa, const XscInstr *ins)
  {
  	const uint32_t op = ins->opcode;
@@ -167,7 +148,7 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  	if (op == SPV_SELECT && xsdk_xsc_is_merge(l, ssa))
  		return xsdk_xsc_merge_operand(l, ssa);
  	if (op == XSC_OP_LOOP_RESULT)
-@@ -1446,8 +1473,10 @@ static XscOperand operand_of(XscLower *l, uint32_t ssa, const XscInstr *ins)
+@@ -1708,8 +1734,10 @@ static XscOperand operand_of(XscLower *l, uint32_t ssa, const XscInstr *ins)
  		xsdk_xsc_lower_refuse(l, "a hardware loop's value read outside its pass (v1)");
  		return (XscOperand){ 0 };
  	}
@@ -180,21 +161,21 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		return reg == XSC_NONE ? (XscOperand){ 0 } : xsc_const(reg);
  	}
  	if (boolean_op(op))
-@@ -1570,9 +1599,10 @@ static XscOrigin scalar_origin_of(XscLower *l, uint32_t ssa)
+@@ -1836,9 +1864,10 @@ static XscOrigin scalar_origin_of(XscLower *l, uint32_t ssa)
  	// is a scalar a hardware loop carries, made of them.
  	if (op == SPV_CONVERT_S_TO_F || op == XSC_OP_LOOP_PHI || op == XSC_OP_LOOP_RESULT)
  		return origin(xsdk_xsc_lower_operand(l, ssa), 0);
 -	const bool broadcast = op == SPV_DOT || op == SPV_CONSTANT || op == SPV_CONSTANT_TRUE || op == SPV_CONSTANT_FALSE ||
 -		op == SPV_F_ADD || op == SPV_F_SUB || op == SPV_F_MUL || op == SPV_F_DIV || op == SPV_F_MOD ||
--		op == SPV_EXT_INST || boolean_op(op) || is_comparison(op);
+-		op == SPV_F_NEGATE || op == SPV_EXT_INST || boolean_op(op) || is_comparison(op);
 +	const bool broadcast = op == SPV_DOT || op == SPV_CONSTANT || op == SPV_SPEC_CONSTANT || op == SPV_CONSTANT_TRUE ||
 +		op == SPV_CONSTANT_FALSE || op == SPV_SPEC_CONSTANT_TRUE || op == SPV_SPEC_CONSTANT_FALSE || op == SPV_F_ADD ||
-+		op == SPV_F_SUB || op == SPV_F_MUL || op == SPV_F_DIV || op == SPV_F_MOD || op == SPV_EXT_INST ||
-+		boolean_op(op) || is_comparison(op);
++		op == SPV_F_SUB || op == SPV_F_MUL || op == SPV_F_DIV || op == SPV_F_MOD || op == SPV_F_NEGATE ||
++		op == SPV_EXT_INST || boolean_op(op) || is_comparison(op);
  	if (broadcast)
  		return origin(xsdk_xsc_lower_operand(l, ssa), XSC_BROADCAST);
  	xsdk_xsc_lower_refuse(l, "cannot resolve scalar %%%u", (unsigned)ssa);
-@@ -1786,7 +1816,9 @@ bool xsdk_xsc_emit_value(XscLower *l, uint32_t ssa, int64_t dst, bool export_, b
+@@ -2052,7 +2081,9 @@ bool xsdk_xsc_emit_value(XscLower *l, uint32_t ssa, int64_t dst, bool export_, b
  	if (!vi)
  		return false;
  	const uint32_t op = vi->opcode;
@@ -206,10 +187,10 @@ index 46c451d28272f3c483b156113db692dea08f8632..32e6cc8c7efeeccb8edac15adf84dbcb
  		if (!export_constant_vector(l, ssa, dst, &done))
  			return false;
 diff --git a/src/xsc_lower.h b/src/xsc_lower.h
-index 8d120a40c1a64a08f95d7d8b01ada2749b767849..196d2f24ec5793244e71306982a07a90d2a01938 100644
+index 025d1768a07b7235da96ce020cb4eb44b06582ca..92de79cbc1dc9d820a5335d32b216896415d268b 100644
 --- a/src/xsc_lower.h
 +++ b/src/xsc_lower.h
-@@ -347,6 +347,8 @@ bool xsdk_xsc_add_need(Xsc *x, XscLowered *out, XsdkXscNeed need);
+@@ -376,6 +376,8 @@ bool xsdk_xsc_add_need(Xsc *x, XscLowered *out, XsdkXscNeed need);
  // The literal pool as constants named _lit<register>, and as needs.
  bool xsdk_xsc_literal_constants(XscLower *l, XscConstants *constants);
  bool xsdk_xsc_literal_needs(XscLower *l, XscLowered *out);
@@ -219,28 +200,19 @@ index 8d120a40c1a64a08f95d7d8b01ada2749b767849..196d2f24ec5793244e71306982a07a90
  bool xsdk_xsc_loop_needs(XscLower *l, XscLowered *out);
  
 diff --git a/src/xsc_lower_flow.c b/src/xsc_lower_flow.c
-index 74c560abcca84167d7264f7a2776c387280a0c7e..74933fd07e3f459827536718914b132772a525c8 100644
+index 87063e2161984b2bbf257772843405ba441bdb56..e3b859d8227406c0b7c472e5d8980743c4083269 100644
 --- a/src/xsc_lower_flow.c
 +++ b/src/xsc_lower_flow.c
-@@ -33,6 +33,17 @@ static const XscComparison comparisons[] = {
- 	{ SPV_F_ORD_LESS_THAN_EQUAL, XSC_VECTOR_CND_GE, true, false, XSC_VECTOR_KILL_GE, true, XSC_VECTOR_KILL_GT, false },
- 	{ SPV_F_ORD_EQUAL, XSC_VECTOR_CND_EQ, false, false, XSC_VECTOR_KILL_EQ, false, XSC_VECTOR_KILL_NE, false },
- 	{ SPV_F_ORD_NOT_EQUAL, XSC_VECTOR_CND_EQ, false, true, XSC_VECTOR_KILL_NE, false, XSC_VECTOR_KILL_EQ, false },
-+	// Ints are float-backed, so their comparisons lower as the float ones do (a specialization's, mostly).
-+	{ SPV_I_EQUAL, XSC_VECTOR_CND_EQ, false, false, XSC_VECTOR_KILL_EQ, false, XSC_VECTOR_KILL_NE, false },
-+	{ SPV_I_NOT_EQUAL, XSC_VECTOR_CND_EQ, false, true, XSC_VECTOR_KILL_NE, false, XSC_VECTOR_KILL_EQ, false },
-+	{ SPV_S_GREATER_THAN, XSC_VECTOR_CND_GT, false, false, XSC_VECTOR_KILL_GT, false, XSC_VECTOR_KILL_GE, true },
-+	{ SPV_U_GREATER_THAN, XSC_VECTOR_CND_GT, false, false, XSC_VECTOR_KILL_GT, false, XSC_VECTOR_KILL_GE, true },
-+	{ SPV_S_LESS_THAN, XSC_VECTOR_CND_GT, true, false, XSC_VECTOR_KILL_GT, true, XSC_VECTOR_KILL_GE, false },
-+	{ SPV_U_LESS_THAN, XSC_VECTOR_CND_GT, true, false, XSC_VECTOR_KILL_GT, true, XSC_VECTOR_KILL_GE, false },
-+	{ SPV_S_GREATER_THAN_EQUAL, XSC_VECTOR_CND_GE, false, false, XSC_VECTOR_KILL_GE, false, XSC_VECTOR_KILL_GT, true },
-+	{ SPV_U_GREATER_THAN_EQUAL, XSC_VECTOR_CND_GE, false, false, XSC_VECTOR_KILL_GE, false, XSC_VECTOR_KILL_GT, true },
-+	{ SPV_S_LESS_THAN_EQUAL, XSC_VECTOR_CND_GE, true, false, XSC_VECTOR_KILL_GE, true, XSC_VECTOR_KILL_GT, false },
-+	{ SPV_U_LESS_THAN_EQUAL, XSC_VECTOR_CND_GE, true, false, XSC_VECTOR_KILL_GE, true, XSC_VECTOR_KILL_GT, false },
- };
- 
- const XscComparison *xsdk_xsc_comparison(uint32_t opcode)
-@@ -374,7 +385,9 @@ static bool no_value(XscLower *l, const XscInstr *ins)
+@@ -23,8 +23,6 @@ enum {
+ 	PIXEL_FIRST_BOOLEAN = 128,
+ 	BOOLEANS_A_STAGE = 128,
+ 	SPV_LOGICAL_NOT = 168,
+-	SPV_I_EQUAL = 170,
+-	SPV_I_NOT_EQUAL = 171,
+ 	REGISTER_BYTES = 16,
+ 	MEMBER_BYTES = 4,
+ 	IMAGE_SAMPLE_FIRST = SPV_IMAGE_SAMPLE_IMPLICIT_LOD,
+@@ -461,7 +459,9 @@ static bool no_value(XscLower *l, const XscInstr *ins)
  	const XscType *const t = xsdk_xsc_result_type(l, ins->result_id);
  	const uint32_t op = ins->opcode;
  	return !ins->result_type || (t && t->kind == XSC_TYPE_POINTER) || op == SPV_VARIABLE || op == SPV_ACCESS_CHAIN ||
@@ -252,10 +224,10 @@ index 74c560abcca84167d7264f7a2776c387280a0c7e..74933fd07e3f459827536718914b1327
  
  // Whether a value's users read through it to what's under it, so lowering it alone would make an instruction they
 diff --git a/src/xsc_lower_fragment.c b/src/xsc_lower_fragment.c
-index 8ab4cf07082707a64b7ef43f1e31ecc72eafb7e2..5a4d67b11189c95b215dbd3ee91e5c76d3611106 100644
+index 25f3f0867b87f38e66edabf11df81311da0c9669..f976870371ecbaeeac6092dea1e934c28b0fcafd 100644
 --- a/src/xsc_lower_fragment.c
 +++ b/src/xsc_lower_fragment.c
-@@ -779,7 +779,8 @@ static bool lower_body(Fragment *f, int64_t param_reg, XscConstants *constants,
+@@ -854,7 +854,8 @@ static bool lower_body(Fragment *f, int64_t param_reg, XscConstants *constants,
  		below_frag_coord_group(l) && add_constants(f, constants) &&
  		xsdk_xsc_program_finish(
  			l->x, l->p, constants->items, constants->count, &out->container, &out->container_bytes) &&
@@ -265,7 +237,7 @@ index 8ab4cf07082707a64b7ef43f1e31ecc72eafb7e2..5a4d67b11189c95b215dbd3ee91e5c76
  }
  
  bool xsdk_xsc_lower_fragment(
-@@ -789,6 +790,8 @@ bool xsdk_xsc_lower_fragment(
+@@ -864,6 +865,8 @@ bool xsdk_xsc_lower_fragment(
  		return false;
  	if (!si->pixel)
  		return xsdk_xsc_fail(x, XSDK_XSC_REFUSED, "lower_fragment called on non-pixel module");
@@ -275,10 +247,10 @@ index 8ab4cf07082707a64b7ef43f1e31ecc72eafb7e2..5a4d67b11189c95b215dbd3ee91e5c76
  	XscStores stores;
  	XscProgram p;
 diff --git a/src/xsc_lower_stage.c b/src/xsc_lower_stage.c
-index 4b9434c8e79795ebbcbb92c2bf76cb316fd3b563..8fefe1d0a283884059ae269c0f9002b406efbc26 100644
+index 0b1206b0fe452584dbe9560817aa853b26097e2c..8e34ae19e5ef4bd1a17441a1adc6f9c2c3e3d041 100644
 --- a/src/xsc_lower_stage.c
 +++ b/src/xsc_lower_stage.c
-@@ -157,3 +157,29 @@ bool xsdk_xsc_literal_needs(XscLower *l, XscLowered *out)
+@@ -267,3 +267,29 @@ bool xsdk_xsc_literal_needs(XscLower *l, XscLowered *out)
  	}
  	return true;
  }
@@ -309,10 +281,10 @@ index 4b9434c8e79795ebbcbb92c2bf76cb316fd3b563..8fefe1d0a283884059ae269c0f9002b4
 +	return true;
 +}
 diff --git a/src/xsc_lower_vertex.c b/src/xsc_lower_vertex.c
-index 15be45366aa4baed4f308e807e4efb59d171db56..0d21bac860b62c17bf5fd1e03cd71f5d8fc36202 100644
+index 43607d4282bd7e5315b37325af2441b67ea1413f..b32cbffcf40d9a8f135c73311e0ec3336c7e3976 100644
 --- a/src/xsc_lower_vertex.c
 +++ b/src/xsc_lower_vertex.c
-@@ -331,6 +331,20 @@ static bool check_lone_outputs(Xsc *x, const XscModule *m)
+@@ -368,6 +368,20 @@ static bool check_lone_outputs(Xsc *x, const XscModule *m, const XscInterface *s
  	return true;
  }
  
@@ -333,10 +305,10 @@ index 15be45366aa4baed4f308e807e4efb59d171db56..0d21bac860b62c17bf5fd1e03cd71f5d
  bool xsdk_xsc_lower_vertex(Xsc *x, const XscModule *m, const XsdkXscOptions *options, XscInterface *si, XscLowered *out)
  {
  	if (!xsdk_xsc_resolve_interface(x, m, si))
-@@ -350,8 +364,16 @@ bool xsdk_xsc_lower_vertex(Xsc *x, const XscModule *m, const XsdkXscOptions *opt
- 	// Temps run past r63 till the allocator packs them.
+@@ -388,8 +402,16 @@ bool xsdk_xsc_lower_vertex(Xsc *x, const XscModule *m, const XsdkXscOptions *opt
  	p.whole_sources = true;
- 	const int64_t index_group = xsdk_xsc_instance_index_reg(si);
+ 	const int64_t index_group = xsdk_xsc_index_reg(si, XSC_ROLE_INSTANCE_INDEX);
+ 	const int64_t vertex_base = xsdk_xsc_index_reg(si, XSC_ROLE_VERTEX_INDEX);
 -	// The option's group takes the register past what the shader declares, as gl_InstanceIndex's does.
 -	out->instance = index_group == XSC_NONE && options->instanced ? si->constant_end++ : index_group;
 +	if (index_group == XSC_NONE && options->instanced) {
@@ -349,25 +321,25 @@ index 15be45366aa4baed4f308e807e4efb59d171db56..0d21bac860b62c17bf5fd1e03cd71f5d
 +	}
 +	if (!xsdk_xsc_specialization_budget(x, si, options->vertex_registers, "vertex"))
 +		return false;
- 	// An instanced shader's fetches leave r0, the vertex index its prologue reads, as the hardware filled it.
- 	const int64_t first = out->instance != XSC_NONE;
- 	XscLower l;
-@@ -372,5 +394,6 @@ bool xsdk_xsc_lower_vertex(Xsc *x, const XscModule *m, const XsdkXscOptions *opt
+ 	// The fetches of an instanced shader or one reading gl_VertexIndex leave r0, the vertex index, as the hardware
+ 	// filled it.
+ 	const int64_t first = out->instance != XSC_NONE || vertex_base != XSC_NONE;
+@@ -413,5 +435,6 @@ bool xsdk_xsc_lower_vertex(Xsc *x, const XscModule *m, const XsdkXscOptions *opt
  	return !xsc_failed(&l) && sample_all(&l, used) && lower_body(&l, si, &pv, &stores, position) &&
- 		add_constants(&l, si, used, out->instance, &constants) &&
+ 		add_constants(&l, used, out->instance, &constants) &&
  		xsdk_xsc_program_finish(x, &p, constants.items, constants.count, &out->container, &out->container_bytes) &&
 -		xsdk_xsc_literal_needs(&l, out) && xsdk_xsc_loop_needs(&l, out) && clip_planes(&l, &pv, &stores, position, out);
 +		xsdk_xsc_literal_needs(&l, out) && xsdk_xsc_specialization_needs(x, si, out) && xsdk_xsc_loop_needs(&l, out) &&
 +		clip_planes(&l, &pv, &stores, position, out);
  }
 diff --git a/src/xsc_private.h b/src/xsc_private.h
-index 2e13006892df9c01811fbb3e415c46af856787e8..0f14f3bc49f659e01b1e24bc7cb1997e105f9616 100644
+index e1b2d25768adfab19e1b4b25b5b476dde063e912..ace1be596d2111adac878521dd8f4fca71c957d9 100644
 --- a/src/xsc_private.h
 +++ b/src/xsc_private.h
-@@ -59,6 +59,11 @@ enum {
- 	SPV_CONSTANT_FALSE = 42,
+@@ -60,6 +60,11 @@ enum {
  	SPV_CONSTANT = 43,
  	SPV_CONSTANT_COMPOSITE = 44,
+ 	SPV_CONSTANT_NULL = 46,
 +	SPV_SPEC_CONSTANT_TRUE = 48,
 +	SPV_SPEC_CONSTANT_FALSE = 49,
 +	SPV_SPEC_CONSTANT = 50,
@@ -376,7 +348,7 @@ index 2e13006892df9c01811fbb3e415c46af856787e8..0f14f3bc49f659e01b1e24bc7cb1997e
  	SPV_FUNCTION = 54,
  	SPV_FUNCTION_END = 56,
  	SPV_VARIABLE = 59,
-@@ -106,7 +111,16 @@ enum {
+@@ -110,7 +115,16 @@ enum {
  	SPV_DPDY = 208,
  	SPV_FWIDTH = 209,
  	SPV_SELECT = 169,
@@ -393,7 +365,7 @@ index 2e13006892df9c01811fbb3e415c46af856787e8..0f14f3bc49f659e01b1e24bc7cb1997e
  	SPV_PHI = 245,
  	SPV_LOOP_MERGE = 246,
  	SPV_SELECTION_MERGE = 247,
-@@ -262,6 +276,7 @@ enum {
+@@ -277,6 +291,7 @@ enum {
  	SPV_DEC_ARRAY_STRIDE = 6,
  	SPV_DEC_MATRIX_STRIDE = 7,
  	SPV_DEC_BUILTIN = 11,
@@ -401,7 +373,7 @@ index 2e13006892df9c01811fbb3e415c46af856787e8..0f14f3bc49f659e01b1e24bc7cb1997e
  	SPV_DEC_LOCATION = 30,
  	SPV_DEC_BINDING = 33,
  	SPV_DEC_DESCRIPTOR_SET = 34,
-@@ -363,6 +378,14 @@ typedef struct {
+@@ -389,6 +404,14 @@ typedef struct {
  	uint32_t regs;
  } XscBlock;
  
@@ -415,49 +387,49 @@ index 2e13006892df9c01811fbb3e415c46af856787e8..0f14f3bc49f659e01b1e24bc7cb1997e
 +
  typedef struct {
  	bool pixel;
- 	// vfetch: (var, usage, usage index); interp_out: (var, o, usage); interp_in: (var, r, usage); color_out: (var,
-@@ -395,6 +418,8 @@ typedef struct {
- 	XscVarUse *comparisons;
- 	size_t comparison_count;
- 	const XscVar *point_coord;
+ 	// vfetch: (var, usage, usage index); interp_out: (var, o, semantic); interp_in: (var, r, semantic), a semantic as
+@@ -425,6 +448,8 @@ typedef struct {
+ 	const XscVar *vpos;
+ 	const XscVar *vface;
+ 	const XscVar *point_size;
 +	XscSpecialization *specializations;
 +	size_t specialization_count;
  } XscInterface;
  
  XscType *xsdk_xsc_resolve_types(Xsc *x, const XscModule *m);
-@@ -402,6 +427,7 @@ const XscType *xsdk_xsc_type(const XscModule *m, const XscType *types, uint64_t
+@@ -432,6 +457,7 @@ const XscType *xsdk_xsc_type(const XscModule *m, const XscType *types, uint64_t
  const char *xsdk_xsc_type_kind_name(XscTypeKind kind);
  bool xsdk_xsc_resolve_interface(Xsc *x, const XscModule *m, XscInterface *si);
  const XscRole *xsdk_xsc_role(const XscInterface *si, uint32_t id);
 +const XscSpecialization *xsdk_xsc_specialization(const XscInterface *si, uint32_t id);
- // The instance group's register of a shader that reads gl_InstanceIndex, or XSC_NONE in a shader without it.
- int64_t xsdk_xsc_instance_index_reg(const XscInterface *si);
- // The dim a slot's sampler has: false where Python's sampler_dims.get gives None for a missing slot.
+ // The register of a shader's instance group, kind XSC_ROLE_INSTANCE_INDEX, or vertex base, XSC_ROLE_VERTEX_INDEX, or
+ // XSC_NONE in a shader that doesn't read gl_InstanceIndex or gl_VertexIndex.
+ int64_t xsdk_xsc_index_reg(const XscInterface *si, XscRoleKind kind);
 diff --git a/src/xsc_program.c b/src/xsc_program.c
-index b289968130c7872c5887b81886f8bfe758f0a399..2d46583b7f4ee3fdb449464e6a9e94489117dba8 100644
+index c7c00ff76b75911ca414923b44ea179d96da6404..c2e40f0f7254d25e20f5d05410ee25b8adea8dfa 100644
 --- a/src/xsc_program.c
 +++ b/src/xsc_program.c
-@@ -255,8 +255,14 @@ bool xsdk_xsc_program_alloc_interpolators(Xsc *x, XscProgram *p)
+@@ -277,8 +277,14 @@ bool xsdk_xsc_program_alloc_interpolators(Xsc *x, XscProgram *p)
  
- bool xsdk_xsc_program_input(Xsc *x, XscProgram *p, int64_t r, uint32_t usage)
+ bool xsdk_xsc_program_input(Xsc *x, XscProgram *p, int64_t r, uint32_t semantic)
  {
 -	if (r != (int64_t)p->interpolator_count)
 +	if (r < (int64_t)p->interpolator_count)
  		return xsdk_xsc_fail(x, XSDK_XSC_MALFORMED, "declare inputs in r0,r1,... order");
-+	// A location the shader skips still takes its interpolator, as the vertex shader's export there lands in it.
++	// A skipped location still takes an interpolator, as the vertex shader's export there lands in it.
 +	while ((int64_t)p->interpolator_count < r) {
 +		const uint32_t skipped = (uint32_t)p->interpolator_count;
-+		if (!add_interpolator(x, p, (XscInterpolator){ skipped, usage, 0, usage_nibble(usage) }))
++		if (!add_interpolator(x, p, skipped, semantic, usage_nibble(semantic)))
 +			return false;
 +	}
- 	if (!add_interpolator(x, p, (XscInterpolator){ (uint32_t)r, usage, 0, usage_nibble(usage) }))
+ 	if (!add_interpolator(x, p, (uint32_t)r, semantic, 0))
  		return false;
  	p->max_reg = highest(p->max_reg, r);
 diff --git a/src/xsc_resolve.c b/src/xsc_resolve.c
-index c1a96eaeed233cf3bd2fd862ca0de7c10f68a010..14a77e2140e63c5bc3b913e8be9fda7c19b79cc1 100644
+index 97387e777064f9284abb07052d65e9e0aee9020f..785acf685c257bdf086fbb33ef9e68b037716a1b 100644
 --- a/src/xsc_resolve.c
 +++ b/src/xsc_resolve.c
-@@ -211,6 +211,15 @@ const XscRole *xsdk_xsc_role(const XscInterface *si, uint32_t id)
+@@ -215,6 +215,15 @@ const XscRole *xsdk_xsc_role(const XscInterface *si, uint32_t id)
  	return id < si->role_limit ? &si->roles[id] : &none;
  }
  
@@ -473,7 +445,7 @@ index c1a96eaeed233cf3bd2fd862ca0de7c10f68a010..14a77e2140e63c5bc3b913e8be9fda7c
  static uint32_t usage_for_vector(const XscModule *m, const XscType *types, int64_t pointee)
  {
  	const XscType *const shape = pointee == XSC_NONE ? NULL : xsdk_xsc_type(m, types, (uint64_t)pointee);
-@@ -549,6 +558,79 @@ static bool assign_comparisons(
+@@ -874,6 +883,80 @@ static bool move_shared(Xsc *x, const XscModule *m, const XscType *types, XscInt
  	return true;
  }
  
@@ -544,18 +516,19 @@ index c1a96eaeed233cf3bd2fd862ca0de7c10f68a010..14a77e2140e63c5bc3b913e8be9fda7c
 +		char name[NAME_BYTES];
 +		const int length = snprintf(name, sizeof name, "_spec%u", (unsigned)constant_id);
 +		const char *const copied = xsdk_xsc_copy_text(x, name, (size_t)length);
-+		if (!copied || !add_constant(x, si, &capacity->constants, (XscConstantSlot){ copied, reg, 1, -1 }))
++		if (!copied ||
++			!add_constant(x, si, &capacity->constants, (XscConstantSlot){ copied, reg, 1, -1, -1, false, 0, 0 }))
 +			return false;
 +	}
 +	return true;
 +}
 +
  enum {
- 	// Vulkan's gl_InstanceIndex, firstInstance included.
- 	BUILTIN_INSTANCE_INDEX = 43,
-@@ -628,7 +710,7 @@ bool xsdk_xsc_resolve_interface(Xsc *x, const XscModule *m, XscInterface *si)
+ 	// Vulkan's gl_VertexIndex, firstVertex or vertexOffset included, and gl_InstanceIndex, firstInstance included.
+ 	BUILTIN_VERTEX_INDEX = 42,
+@@ -958,7 +1041,7 @@ bool xsdk_xsc_resolve_interface(Xsc *x, const XscModule *m, XscInterface *si)
+ 	if (xsdk_xsc_hlsl(m) && (!d3d9_registers(x, m, types, si) || !move_shared(x, m, types, si)))
  		return false;
- 	si->constant_end = (uint32_t)end;
  	if (!add_vulkan_samplers(x, m, types, si, vulkan_samplers, vulkan_count, &capacity) ||
 -		!assign_comparisons(x, m, types, si, &capacity))
 +		!assign_comparisons(x, m, types, si, &capacity) || !assign_specializations(x, m, types, si, &capacity))
@@ -563,7 +536,7 @@ index c1a96eaeed233cf3bd2fd862ca0de7c10f68a010..14a77e2140e63c5bc3b913e8be9fda7c
  	sort_uses(si->vfetch, si->vfetch_count, true);
  	sort_uses(si->interp_in, si->interp_in_count, false);
 diff --git a/src/xsc_spirv.c b/src/xsc_spirv.c
-index 172c6027226ec5c746e5bc129a967efb73b19551..cf7d7e76565d6899c05375ac41b83f8daed0a617 100644
+index 672b134ac927b3fa8273df04fcc68b74f8740ada..95f13bad734a03b4acc906c2b7fb2b0e89561d1a 100644
 --- a/src/xsc_spirv.c
 +++ b/src/xsc_spirv.c
 @@ -18,7 +18,9 @@ static const struct {
@@ -577,22 +550,17 @@ index 172c6027226ec5c746e5bc129a967efb73b19551..cf7d7e76565d6899c05375ac41b83f8d
  	{ 57, "FunctionCall" }, { 59, "Variable" }, { 61, "Load" }, { 62, "Store" }, { 65, "AccessChain" },
  	{ 71, "Decorate" }, { 72, "MemberDecorate" }, { 79, "VectorShuffle" }, { 80, "CompositeConstruct" },
  	{ 81, "CompositeExtract" }, { 82, "CompositeInsert" }, { 84, "Transpose" }, { 87, "ImageSampleImplicitLod" },
-@@ -40,10 +42,10 @@ static const struct {
+@@ -40,7 +42,8 @@ static const struct {
  	{ 245, "Phi" } };
  
  // Opcodes whose first two words are a result type and id, and those with an id alone (spirv.py).
 -static const uint16_t type_and_result[] = { 12, 43, 44, 54, 55, 57, 59, 61, 65, 79, 80, 81, 82, 84, 87, 88, 89, 90, 91,
--	92, 124, 127, 129, 130, 131, 133, 136, 141, 142, 144, 145, 146, 148, 169, 180, 182, 184, 186, 188, 190, 110, 111,
--	128, 132, 134, 135, 137, 138, 139, 154, 155, 166, 167, 168, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179, 194,
--	195, 196, 197, 198, 199, 200, 207, 208, 209, 41, 42, 245 };
-+static const uint16_t type_and_result[] = { 12, 43, 44, 48, 49, 50, 51, 52, 54, 55, 57, 59, 61, 65, 79, 80, 81, 82, 84,
-+	87, 88, 89, 90, 91, 92, 124, 127, 129, 130, 131, 133, 136, 141, 142, 144, 145, 146, 148, 169, 180, 182, 184, 186,
-+	188, 190, 110, 111, 128, 132, 134, 135, 137, 138, 139, 154, 155, 166, 167, 168, 170, 171, 172, 173, 174, 175, 176,
-+	177, 178, 179, 194, 195, 196, 197, 198, 199, 200, 207, 208, 209, 41, 42, 245 };
- static const uint16_t result_only[] = { 11, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 32, 33, 248 };
- 
- static bool listed(const uint16_t *list, size_t count, uint32_t opcode)
-@@ -55,6 +57,12 @@ static bool listed(const uint16_t *list, size_t count, uint32_t opcode)
++static const uint16_t type_and_result[] = { 12, 43, 44, 48, 49, 50, 51, 52, 54, 55, 57, 59, 61, 65, 79, 80, 81, 82,
++	84, 87, 88, 89, 90, 91,
+ 	92, 124, 127, 129, 130, 131, 133, 136, 141, 142, 143, 144, 145, 146, 148, 169, 180, 182, 184, 186, 188, 190, 110,
+ 	111, 128, 132, 134, 135, 137, 138, 139, 154, 155, 166, 167, 168, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179,
+ 	194, 195, 196, 197, 198, 199, 200, 207, 208, 209, 41, 42, 245, 1, 46 };
+@@ -55,6 +58,12 @@ static bool listed(const uint16_t *list, size_t count, uint32_t opcode)
  	return false;
  }
  
@@ -605,7 +573,7 @@ index 172c6027226ec5c746e5bc129a967efb73b19551..cf7d7e76565d6899c05375ac41b83f8d
  static uint32_t skipped_words(uint32_t opcode)
  {
  	if (opcode >= XSC_OP_LOOP_PHI)
-@@ -248,7 +256,16 @@ bool xsdk_xsc_spirv_parse(Xsc *x, const uint32_t *words, size_t word_count, XscM
+@@ -257,7 +266,16 @@ bool xsdk_xsc_spirv_parse(Xsc *x, const uint32_t *words, size_t word_count, XscM
  			return xsdk_xsc_fail(x, XSDK_XSC_MALFORMED, "zero word-count at %zu", i);
  		const uint32_t available = (uint32_t)(word_count - i - 1 < count - 1 ? word_count - i - 1 : count - 1);
  		XscInstr ins = { .opcode = opcode, .words = copy + i + 1, .word_count = available };
@@ -624,10 +592,10 @@ index 172c6027226ec5c746e5bc129a967efb73b19551..cf7d7e76565d6899c05375ac41b83f8d
  			return xsdk_xsc_fail(x, XSDK_XSC_MALFORMED, "Op%u too short for its result", (unsigned)opcode);
  		if (skip == 2) {
 diff --git a/xenos-toolchain/docs/xsc.md b/xenos-toolchain/docs/xsc.md
-index e3d93050753ab30372287e968e282095da88bcca..97abb617312e9a1d6b0de266f1e37da18a0dd376 100644
+index cb37fce88cc6e1d726e296b015585445714e139b..0536198b20092847984ed37d71e94ad68b86306c 100644
 --- a/xenos-toolchain/docs/xsc.md
 +++ b/xenos-toolchain/docs/xsc.md
-@@ -112,7 +112,9 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
+@@ -124,7 +124,9 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
  - VS inputs → vfetch in Location order; vertex-element usage by location:
    0=POSITION, 1=COLOR, 2=TEXCOORD, 3+=TEXCOORD(idx++). Host vertex format
    must match. VS output BuiltIn Position → oPos; Location *N* → interpolator
@@ -638,7 +606,7 @@ index e3d93050753ab30372287e968e282095da88bcca..97abb617312e9a1d6b0de266f1e37da1
    → oC*N*, colour target *N* (xenia:src/xenia/gpu/ucode.h:1836-1839), under
    the one `alloc colors`; past 3 is refused. The container's outputs word is
    the mask of them, bit *N* for oC*N* (XenosRecomp:XenosRecomp/shader.h:80-92),
-@@ -140,6 +142,16 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
+@@ -195,6 +197,16 @@ came from; that test and its test vectors stay in xost's archived repo (github.c
    (`tests/test_fetch_fills.py`).
  - Bare uniforms → constant registers by Location; scalars read the register's
    `.x`.
@@ -655,99 +623,6 @@ index e3d93050753ab30372287e968e282095da88bcca..97abb617312e9a1d6b0de266f1e37da1
  - Uniform and push constant blocks → the block's raw std140 bytes in
    consecutive registers, for a host that copies them in as they are. Push
    constants take the first registers (after any bare uniforms), then each
-diff --git a/xenos-toolchain/xsc/lower.py b/xenos-toolchain/xsc/lower.py
-index 044779456bfaef95b63e3011f785f1fb9ff4bb8d..51ed52d36717c1eaf068833e30a3ca0e70bad3a0 100644
---- a/xenos-toolchain/xsc/lower.py
-+++ b/xenos-toolchain/xsc/lower.py
-@@ -37,8 +37,9 @@ def lower_ex(m: spirv.Module, registers: RegisterBudget = LIBXENON_REGISTERS, op
-     and trip count, which the host uploads to integer_constants[8+loop_id], ("block_loop", loop_id, kind, set, binding,
-     offset_bytes, start, step) for a loop an int in a block counts from start by step, which the host reads from the
-     block for loop constant loop_id's passes (native.loop_passes), ("fixed_loop", loop_id, passes) for loops whose
--    count is data, which the host sets to 255 passes, and ("clip", plane, constant_register) for each user clip plane
--    gl_ClipDistance reads, which the host sets from that register. registers is the runtime's register split; a
-+    count is data, which the host sets to 255 passes, ("clip", plane, constant_register) for each user clip plane
-+    gl_ClipDistance reads, and ("spec", register, constant_id, type, default) for scalar specialization constants.
-+    registers is the runtime's register split; a
-     shader past its kind's share raises RegisterBudgetError. optimize has the compiler rewrite the instructions before
-     they're allocated; group_fetches off lays a pixel shader's fetches out as before milestone 36."""
-     try:
-diff --git a/xenos-toolchain/xsc/native.py b/xenos-toolchain/xsc/native.py
-index 34f15da7272238e38ee339483d1ea9c967acf7eb..1bb055c4f7090a40334a51a9ab01e0755617b500 100644
---- a/xenos-toolchain/xsc/native.py
-+++ b/xenos-toolchain/xsc/native.py
-@@ -11,8 +11,9 @@ LIBRARY = Path(__file__).resolve().parents[2] / "build" / "host" / "libxsc.so"
- 
- OK, REFUSED, REGISTERS, BAD_VALUE, MALFORMED, OUT_OF_MEMORY = range(6)
- STATUS_NAMES = ("ok", "refused", "registers", "bad value", "malformed", "out of memory")
--LITERAL, ARRAY, LOOP, BLOCK_LOOP, CLIP_PLANE, FIXED_LOOP = range(6)
-+LITERAL, ARRAY, LOOP, BLOCK_LOOP, CLIP_PLANE, FIXED_LOOP, SPECIALIZATION = range(7)
- RESOURCE_KINDS = ("push", "uniform", "sampler", "comparison", "instance")
-+SPECIALIZATION_TYPES = ("bool", "int", "uint", "float")
- MESSAGE_BYTES = 512
- # The pixel constant gl_FragCoord.xy adds to the pixel parameters, which xsdk keeps at 0.5 and 0.5 more than a tiled
- # pass's band's top row (xsdk:include/xsdk/xsc.h, XSDK_XSC_FRAG_COORD_CONSTANT).
-@@ -28,7 +29,8 @@ class Need(ctypes.Structure):
-     _fields_ = [("kind", ctypes.c_int), ("reg", ctypes.c_uint32), ("regs", ctypes.c_uint32),
-                 ("value", ctypes.c_double * 4), ("name", ctypes.c_char_p), ("block", ctypes.c_int),
-                 ("set", ctypes.c_uint32), ("binding", ctypes.c_uint32), ("offset_bytes", ctypes.c_uint32),
--                ("start", ctypes.c_int32), ("step", ctypes.c_int32)]
-+                ("start", ctypes.c_int32), ("step", ctypes.c_int32), ("constant_id", ctypes.c_uint32),
-+                ("scalar_type", ctypes.c_int), ("default_value", ctypes.c_double)]
- 
- 
- class Resource(ctypes.Structure):
-@@ -67,6 +69,11 @@ class _Block(ctypes.Structure):
-                 ("reg", ctypes.c_uint32), ("regs", ctypes.c_uint32)]
- 
- 
-+class _Specialization(ctypes.Structure):
-+    _fields_ = [("id", ctypes.c_uint32), ("constant_id", ctypes.c_uint32), ("reg", ctypes.c_uint32),
-+                ("scalar_type", ctypes.c_int), ("default_value", ctypes.c_double)]
-+
-+
- # The interface xsdk:src/xsc_private.h's XscInterface holds; the compiler's own lookup, its roles, stays in C.
- class _Interface(ctypes.Structure):
-     _fields_ = [("pixel", ctypes.c_bool),
-@@ -83,7 +90,8 @@ class _Interface(ctypes.Structure):
-                 ("sampler_dims", ctypes.POINTER(ctypes.c_int64)), ("sampler_dim_count", ctypes.c_size_t),
-                 ("roles", ctypes.c_void_p), ("role_limit", ctypes.c_uint32),
-                 ("comparisons", ctypes.POINTER(_VarUse)), ("comparison_count", ctypes.c_size_t),
--                ("point_coord", ctypes.POINTER(_Var))]
-+                ("point_coord", ctypes.POINTER(_Var)), ("specializations", ctypes.POINTER(_Specialization)),
-+                ("specialization_count", ctypes.c_size_t)]
- 
- 
- # Room for xsc_private.h's XscModule, which only the C reads.
-@@ -177,7 +185,9 @@ def resolve_spirv(spirv: bytes):
-             constant_end=si.constant_end,
-             sampler_dims={si.sampler_dims[2 * i]: _optional(si.sampler_dims[2 * i + 1])
-                           for i in range(si.sampler_dim_count)},
--            comparisons=uses(si.comparisons, si.comparison_count, False))
-+            comparisons=uses(si.comparisons, si.comparison_count, False),
-+            specializations=[(s.id, s.constant_id, s.reg, SPECIALIZATION_TYPES[s.scalar_type], s.default_value)
-+                             for s in (si.specializations[i] for i in range(si.specialization_count))])
-     finally:
-         library.xsdk_xsc_release(ctypes.byref(x))
- 
-@@ -193,6 +203,8 @@ def _need(n: Need):
-         return "clip", n.regs, n.reg
-     if n.kind == FIXED_LOOP:
-         return "fixed_loop", n.reg, n.regs
-+    if n.kind == SPECIALIZATION:
-+        return "spec", n.reg, n.constant_id, SPECIALIZATION_TYPES[n.scalar_type], n.default_value
-     return "loop", n.reg, n.name.decode()
- 
- 
-@@ -208,7 +220,8 @@ def compile_spirv(spirv: bytes, pixel_registers: int, vertex_registers: int, opt
-     the manifest [(register, (f0, f1, f2, f3))], with ("array", reg, regs, name) and ("loop", id, name) for a
-     hardware loop a bare uniform counts, ("block_loop", id, kind, set, binding, offset_bytes, start, step) for one an
-     int in a block counts, i from start by step, ("fixed_loop", id, passes) for loops whose count is data, which run
--    passes, 255, and ("clip", plane, register) for a user clip plane; the resources [(kind, set, binding, register,
-+    passes, 255, ("clip", plane, register) for a user clip plane, and ("spec", register, constant_id, type, default)
-+    for each scalar specialization constant; the resources [(kind, set, binding, register,
-     registers)], blocks, samplers, comparisons, then an instanced vertex shader's group, the float constant the runtime
-     writes before each piece of a draw (xsdk:include/xsdk/xsc.h, XSDK_XSC_INSTANCE). instanced lowers a vertex shader
-     for instanced draws, as one reading gl_InstanceIndex always is."""
 diff --git a/xenos-toolchain/tests/test_xsc_specialization.py b/xenos-toolchain/tests/test_xsc_specialization.py
 new file mode 100644
 index 0000000000000000000000000000000000000000..996ca6adac33dfe4d1d3b8453fc0441af603c4f7
@@ -830,3 +705,96 @@ index 0000000000000000000000000000000000000000..996ca6adac33dfe4d1d3b8453fc0441a
 +
 +if __name__ == "__main__":
 +    main()
+diff --git a/xenos-toolchain/xsc/lower.py b/xenos-toolchain/xsc/lower.py
+index 044779456bfaef95b63e3011f785f1fb9ff4bb8d..51ed52d36717c1eaf068833e30a3ca0e70bad3a0 100644
+--- a/xenos-toolchain/xsc/lower.py
++++ b/xenos-toolchain/xsc/lower.py
+@@ -37,8 +37,9 @@ def lower_ex(m: spirv.Module, registers: RegisterBudget = LIBXENON_REGISTERS, op
+     and trip count, which the host uploads to integer_constants[8+loop_id], ("block_loop", loop_id, kind, set, binding,
+     offset_bytes, start, step) for a loop an int in a block counts from start by step, which the host reads from the
+     block for loop constant loop_id's passes (native.loop_passes), ("fixed_loop", loop_id, passes) for loops whose
+-    count is data, which the host sets to 255 passes, and ("clip", plane, constant_register) for each user clip plane
+-    gl_ClipDistance reads, which the host sets from that register. registers is the runtime's register split; a
++    count is data, which the host sets to 255 passes, ("clip", plane, constant_register) for each user clip plane
++    gl_ClipDistance reads, and ("spec", register, constant_id, type, default) for scalar specialization constants.
++    registers is the runtime's register split; a
+     shader past its kind's share raises RegisterBudgetError. optimize has the compiler rewrite the instructions before
+     they're allocated; group_fetches off lays a pixel shader's fetches out as before milestone 36."""
+     try:
+diff --git a/xenos-toolchain/xsc/native.py b/xenos-toolchain/xsc/native.py
+index 5753a7f4f84a07e76a534c9ff227432fcabaed47..de17fee7b9f8352fe5d433a0b6bde9b8847ab17c 100644
+--- a/xenos-toolchain/xsc/native.py
++++ b/xenos-toolchain/xsc/native.py
+@@ -12,8 +12,9 @@ LIBRARY = Path(__file__).resolve().parents[2] / "build" / "host" / "libxsc.so"
+ 
+ OK, REFUSED, REGISTERS, BAD_VALUE, MALFORMED, OUT_OF_MEMORY = range(6)
+ STATUS_NAMES = ("ok", "refused", "registers", "bad value", "malformed", "out of memory")
+-LITERAL, ARRAY, LOOP, BLOCK_LOOP, CLIP_PLANE, FIXED_LOOP = range(6)
++LITERAL, ARRAY, LOOP, BLOCK_LOOP, CLIP_PLANE, FIXED_LOOP, SPECIALIZATION = range(7)
+ RESOURCE_KINDS = ("push", "uniform", "sampler", "comparison", "instance", "vertex_base")
++SPECIALIZATION_TYPES = ("bool", "int", "uint", "float")
+ MESSAGE_BYTES = 512
+ # The pixel constant gl_FragCoord.xy adds to the pixel parameters, which xsdk keeps at 0.5 and 0.5 more than a tiled
+ # pass's band's top row (xsdk:include/xsdk/xsc.h, XSDK_XSC_FRAG_COORD_CONSTANT).
+@@ -33,7 +34,8 @@ class Need(ctypes.Structure):
+     _fields_ = [("kind", ctypes.c_int), ("reg", ctypes.c_uint32), ("regs", ctypes.c_uint32),
+                 ("value", ctypes.c_double * 4), ("name", ctypes.c_char_p), ("block", ctypes.c_int),
+                 ("set", ctypes.c_uint32), ("binding", ctypes.c_uint32), ("offset_bytes", ctypes.c_uint32),
+-                ("start", ctypes.c_int32), ("step", ctypes.c_int32)]
++                ("start", ctypes.c_int32), ("step", ctypes.c_int32), ("constant_id", ctypes.c_uint32),
++                ("scalar_type", ctypes.c_int), ("default_value", ctypes.c_double)]
+ 
+ 
+ class Resource(ctypes.Structure):
+@@ -72,6 +74,11 @@ class _Block(ctypes.Structure):
+                 ("reg", ctypes.c_uint32), ("regs", ctypes.c_uint32)]
+ 
+ 
++class _Specialization(ctypes.Structure):
++    _fields_ = [("id", ctypes.c_uint32), ("constant_id", ctypes.c_uint32), ("reg", ctypes.c_uint32),
++                ("scalar_type", ctypes.c_int), ("default_value", ctypes.c_double)]
++
++
+ # The interface xsdk:src/xsc_private.h's XscInterface holds; the compiler's own lookup, its roles, stays in C.
+ class _Interface(ctypes.Structure):
+     _fields_ = [("pixel", ctypes.c_bool),
+@@ -89,7 +96,8 @@ class _Interface(ctypes.Structure):
+                 ("roles", ctypes.c_void_p), ("role_limit", ctypes.c_uint32),
+                 ("comparisons", ctypes.POINTER(_VarUse)), ("comparison_count", ctypes.c_size_t),
+                 ("point_coord", ctypes.POINTER(_Var)), ("vpos", ctypes.POINTER(_Var)), ("vface", ctypes.POINTER(_Var)),
+-                ("point_size", ctypes.POINTER(_Var))]
++                ("point_size", ctypes.POINTER(_Var)), ("specializations", ctypes.POINTER(_Specialization)),
++                ("specialization_count", ctypes.c_size_t)]
+ 
+ 
+ # Room for xsc_private.h's XscModule, which only the C reads.
+@@ -192,7 +200,9 @@ def resolve_spirv(spirv: bytes):
+             constant_end=si.constant_end,
+             sampler_dims={si.sampler_dims[2 * i]: _optional(si.sampler_dims[2 * i + 1])
+                           for i in range(si.sampler_dim_count)},
+-            comparisons=uses(si.comparisons, si.comparison_count, False))
++            comparisons=uses(si.comparisons, si.comparison_count, False),
++            specializations=[(s.id, s.constant_id, s.reg, SPECIALIZATION_TYPES[s.scalar_type], s.default_value)
++                             for s in (si.specializations[i] for i in range(si.specialization_count))])
+     finally:
+         library.xsdk_xsc_release(ctypes.byref(x))
+ 
+@@ -208,6 +218,8 @@ def _need(n: Need):
+         return "clip", n.regs, n.reg
+     if n.kind == FIXED_LOOP:
+         return "fixed_loop", n.reg, n.regs
++    if n.kind == SPECIALIZATION:
++        return "spec", n.reg, n.constant_id, SPECIALIZATION_TYPES[n.scalar_type], n.default_value
+     return "loop", n.reg, n.name.decode()
+ 
+ 
+@@ -223,7 +235,8 @@ def compile_spirv(spirv: bytes, pixel_registers: int, vertex_registers: int, opt
+     the manifest [(register, (f0, f1, f2, f3))], with ("array", reg, regs, name) and ("loop", id, name) for a
+     hardware loop a bare uniform counts, ("block_loop", id, kind, set, binding, offset_bytes, start, step) for one an
+     int in a block counts, i from start by step, ("fixed_loop", id, passes) for loops whose count is data, which run
+-    passes, 255, and ("clip", plane, register) for a user clip plane; the resources [(kind, set, binding, register,
++    passes, 255, ("clip", plane, register) for a user clip plane, and ("spec", register, constant_id, type, default)
++    for each scalar specialization constant; the resources [(kind, set, binding, register,
+     registers)], blocks, samplers, comparisons, then an instanced vertex shader's group, the float constant the runtime
+     writes before each piece of a draw (xsdk:include/xsdk/xsc.h, XSDK_XSC_INSTANCE), then the vertex base of one
+     reading gl_VertexIndex, the float constant the runtime writes before each draw (XSDK_XSC_VERTEX_BASE). instanced
