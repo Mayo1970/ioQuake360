@@ -2456,7 +2456,11 @@ void Com_GameRestart_f(void)
 //   not sure it's necessary to have different defaults for regular and dedicated, but I don't want to risk it
 //   https://zerowing.idsoftware.com/bugzilla/show_bug.cgi?id=470
 #ifndef DEDICATED
+#ifdef __XSDK__
+char	cl_cdkey[34] = "wj7cplhs2gp3ac3a                ";
+#else
 char	cl_cdkey[34] = "                                ";
+#endif
 #else
 char	cl_cdkey[34] = "123456789";
 #endif
@@ -2476,7 +2480,11 @@ void Com_ReadCDKey( const char *filename ) {
 
 	FS_BaseDir_FOpenFileRead( fbuffer, &f );
 	if ( !f ) {
+#if defined(__XSDK__) && !defined(DEDICATED) && !defined(STANDALONE)
+		// keep the seeded key so the ui skips the CD key menu (PS3 and Wii U ports do the same)
+#else
 		Com_Memset( cl_cdkey, '\0', 17 );
+#endif
 		return;
 	}
 
@@ -2490,7 +2498,11 @@ void Com_ReadCDKey( const char *filename ) {
 	if (CL_CDKeyValidate(buffer, NULL)) {
 		Q_strncpyz( cl_cdkey, buffer, 17 );
 	} else {
+#if defined(__XSDK__) && !defined(DEDICATED) && !defined(STANDALONE)
+		// keep the seeded key, as above
+#else
 		Com_Memset( cl_cdkey, '\0', 17 );
+#endif
 	}
 }
 
