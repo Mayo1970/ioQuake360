@@ -13,8 +13,8 @@ You need an **RGH or JTAG** Xbox 360 with a homebrew dashboard such as
 
 | Build | XEX | What it is | Notable features |
 |---|---|---|---|
-| **ioQuake3** | `ioquake360.xex` | Quake III Arena | Full gameplay, bots, online/LAN multiplayer, mods via `fs_game` |
-| **Team Arena** | `ioquake360_ta.xex` | Q3A + the *Team Arena* mission pack | Adds TA's extra weapons, game modes and UI on top of ioQuake3 |
+| **Quake III Arena** | `ioquake360.xex` | Q3A | Full gameplay, bots, online/LAN multiplayer, mods via `fs_game` |
+| **Team Arena** | `ioquake360_ta.xex` | Q3A + the *Team Arena* mission pack | Adds TA's extra weapons, game modes and UI on top of Quake III Arena |
 | **Open Arena** | `ioquake360_oa.xex` | Free/open Q3A-compatible game | Same engine features, uses free OA game data — no retail purchase needed |
 
 ## Where to get the required files
@@ -22,7 +22,7 @@ You need an **RGH or JTAG** Xbox 360 with a homebrew dashboard such as
 Buy the base game(s) legally, then copy the `.pk3` files from your
 install/disc into the paths below.
 
-- **Quake III Arena** (needed for ioQuake3 and Team Arena): [Here](https://www.gog.com/en/game/quake_iii_arena)
+- **Quake III Arena** (needed for both the Q3A and Team Arena flavors): [Here](https://www.gog.com/en/game/quake_iii_arena)
 - **Open Arena** [Here](https://openarena.ws/)
 
 ---
@@ -44,7 +44,7 @@ the HDD or a USB drive works, as long as the game data sits next to the
 
 ---
 
-## ioQuake3 (Q3A)
+## Quake III Arena (Q3A)
 
 XEX: `ioquake360.xex`
 

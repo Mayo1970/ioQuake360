@@ -8,7 +8,7 @@ ifneq ($(filter oa,$(MAKECMDGOALS)),)
 endif
 
 ifeq ($(TA),1)
-  TITLE         := Team Arena
+  TITLE         := Quake III: Team Arena
   TITLE_ID      := 51330361
   TITLE_ICON    := icons/ta.png
   TARGET        := ioquake360_ta
@@ -22,7 +22,7 @@ else ifeq ($(OA),1)
   BUILD         := build_oa
   DEFINES_EXTRA := -DSTANDALONEOA
 else
-  TITLE         := ioQuake3
+  TITLE         := Quake III Arena
   TITLE_ID      := 51330360
   TITLE_ICON    := icons/q3.png
   TARGET        := ioquake360

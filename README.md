@@ -8,13 +8,13 @@ uses the null renderer; `RENDERER=vk` statically links
 
 Three builds are produced from the same source tree. Each is a `.xex` for an
 RGH/JTAG console, with native `cgame` and `qagame`. Open Arena also has a
-native `ui`; ioQuake3 and Team Arena run `vm/ui.qvm` from their paks.
+native `ui`; Quake III Arena and Team Arena run `vm/ui.qvm` from their paks.
 
 | Variant | XEX | Title ID | Game dir | Native modules |
 |---|---|---|---|---|
-| ioQuake3   | `ioquake360.xex`    | `51330360` | `baseq3` | `qagame`, `cgame` |
-| Team Arena | `ioquake360_ta.xex` | `51330361` | `baseq3` + `missionpack` | `qagame`, `cgame` |
-| Open Arena | `ioquake360_oa.xex` | `51330362` | `baseoa` | `qagame`, `cgame`, `ui` |
+| Quake III Arena | `ioquake360.xex`    | `51330360` | `baseq3` | `qagame`, `cgame` |
+| Team Arena      | `ioquake360_ta.xex` | `51330361` | `baseq3` + `missionpack` | `qagame`, `cgame` |
+| Open Arena      | `ioquake360_oa.xex` | `51330362` | `baseoa` | `qagame`, `cgame`, `ui` |
 
 ## Status
 
@@ -103,7 +103,7 @@ Bash:
 ### Build individual variants
 
 ```bash
-./tools/docker-make.sh clean all       # ioQuake3 (Q3A)
+./tools/docker-make.sh clean all       # Quake III Arena (Q3A)
 ./tools/docker-make.sh clean ta        # Team Arena
 ./tools/docker-make.sh clean oa        # Open Arena
 ```
@@ -128,9 +128,9 @@ make clean    # wipe all build dirs (build/, build_ta/, build_oa/)
 
 | Variant | Path | Title ID |
 |---|---|---|
-| ioQuake3   | `build/ioquake360.xex` | `51330360` |
-| Team Arena | `build_ta/ioquake360_ta.xex` | `51330361` |
-| Open Arena | `build_oa/ioquake360_oa.xex` | `51330362` |
+| Quake III Arena | `build/ioquake360.xex` | `51330360` |
+| Team Arena      | `build_ta/ioquake360_ta.xex` | `51330361` |
+| Open Arena      | `build_oa/ioquake360_oa.xex` | `51330362` |
 
 Run `make clean` after changing compiler flags. Switching `RENDERER` relinks
 with the selected renderer while reusing the shared engine objects.
@@ -248,7 +248,7 @@ Pulls the view toward the nearest visible enemy inside a small cone, weaker whil
 
 OGG Vorbis background music, with the PS3 port's per-map playlists.
 
-The per-map playlists work in ioQuake3 and Team Arena. Open Arena plays the map's own track.
+The per-map playlists work in Quake III Arena and Team Arena. Open Arena plays the map's own track.
 
 **Search order:**
 
