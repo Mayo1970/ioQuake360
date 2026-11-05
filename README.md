@@ -1,7 +1,7 @@
 # ioQuake360
 
 A port of [ioQuake3](https://github.com/ioquake/ioq3) to the Xbox 360, built on the
-open [xsdk](https://github.com/openpak/x360-sdk) homebrew SDK. The default build
+open [xsdk](https://github.com/xenosworks/xsdk) homebrew SDK. The default build
 uses the null renderer; `RENDERER=vk` statically links
 [Quake3e](https://github.com/ec-/Quake3e)'s Vulkan renderer on
 [vulkan4xenon](https://github.com/xenosworks/vulkan4xenon), the Vulkan layer on Xenos.
@@ -268,7 +268,7 @@ music track2.ogg       # or "music <path>" syntax
 
 - **[ioQuake3](https://github.com/ioquake/ioq3)** — the upstream engine this port is based on.
 - **[Quake3e](https://github.com/ec-/Quake3e)** — the Vulkan renderer.
-- **[xsdk](https://github.com/openpak/x360-sdk)** — the Xbox 360 homebrew SDK, GPU layer and toolchain.
+- **[xsdk](https://github.com/xenosworks/xsdk)** — the Xbox 360 homebrew SDK, GPU layer and toolchain.
 - **[vulkan4xenon](https://github.com/xenosworks/vulkan4xenon)** — the Vulkan 1.0 layer on Xenos.
 - **[OpenArena](https://github.com/OpenArena/gamecode)** — the Open Arena game code.
 - **[Xenia](https://github.com/xenia-project/xenia)** and **[libxenon](https://github.com/Free60Project/libxenon)** — the public reverse-engineering the SDK builds on.
