@@ -32,6 +32,63 @@ static uint32_t s_ready_tail;
 static uint32_t s_read_pairs;
 static XAUDIO_RENDER_DRIVER_CLIENT s_client;
 
+static cvar_t *s_sndDebug;
+static uint32_t s_callbacks_entered;
+static uint32_t s_callbacks_driver_zero;
+static uint32_t s_frames_submitted;
+static uint32_t s_silent_frames_submitted;
+static uint32_t s_submit_errors;
+static uint32_t s_last_submit_result;
+static uint32_t s_last_queue_peak_bits;
+static uint32_t s_last_frame_pointer;
+static uint32_t s_last_frame_slot;
+static uint32_t s_inflight_overwrites;
+static uint32_t s_frames_filled;
+static int s_audio_init_time;
+static int s_last_debug_time;
+static qboolean s_first_callback_reported;
+static qboolean s_no_callback_reported;
+
+static void Xenon_AudioDebugThink(void)
+{
+	const int now = Sys_Milliseconds();
+	const uint32_t callbacks = __atomic_load_n(&s_callbacks_entered, __ATOMIC_ACQUIRE);
+
+	if (!callbacks && !s_no_callback_reported && now - s_audio_init_time >= 3000) {
+		Com_Printf("Xenon audio: no render callback after 3 s\n");
+		s_no_callback_reported = qtrue;
+	}
+
+	if (!s_first_callback_reported && callbacks) {
+		Com_Printf("Xenon audio: first render callback after %d ms\n", now - s_audio_init_time);
+		s_first_callback_reported = qtrue;
+	}
+
+	if (!s_sndDebug || !s_sndDebug->integer || now - s_last_debug_time < 1000)
+		return;
+
+	s_last_debug_time = now;
+	{
+		union { uint32_t u; float f; } peak;
+		peak.u = __atomic_load_n(&s_last_queue_peak_bits, __ATOMIC_RELAXED);
+		Com_Printf("Xenon audio debug: callbacks=%u driver0=%u queued=%u silent=%u submitErrors=%u lastResult=0x%08X peakQueue=%.6f lastFrame=0x%08X slot=%d inflightOverwrites=%u filled=%u head=%u tail=%u readPairs=%u\n",
+			(unsigned)callbacks,
+			(unsigned)__atomic_load_n(&s_callbacks_driver_zero, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_frames_submitted, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_silent_frames_submitted, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_submit_errors, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_last_submit_result, __ATOMIC_RELAXED),
+			peak.f,
+			(unsigned)__atomic_load_n(&s_last_frame_pointer, __ATOMIC_RELAXED),
+			(int32_t)__atomic_load_n(&s_last_frame_slot, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_inflight_overwrites, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_frames_filled, __ATOMIC_RELAXED),
+			(unsigned)__atomic_load_n(&s_ready_head, __ATOMIC_ACQUIRE),
+			(unsigned)__atomic_load_n(&s_ready_tail, __ATOMIC_ACQUIRE),
+			(unsigned)__atomic_load_n(&s_read_pairs, __ATOMIC_ACQUIRE));
+	}
+}
+
 static void Xenon_FillFrame(float *frame)
 {
 	uint32_t pair = __atomic_load_n(&s_read_pairs, __ATOMIC_RELAXED) % XENON_AUDIO_FULLSAMPLES;
@@ -49,7 +106,11 @@ static void Xenon_FillFreeFrames(void)
 	uint32_t tail = s_ready_tail;
 
 	while (tail - __atomic_load_n(&s_ready_head, __ATOMIC_ACQUIRE) < XENON_AUDIO_QUEUE) {
+		// the slot the callback just handed to XAudio is refilled here; counted in case XAudio reads it later
+		if (tail % XENON_AUDIO_QUEUE == __atomic_load_n(&s_last_frame_slot, __ATOMIC_RELAXED))
+			__atomic_fetch_add(&s_inflight_overwrites, 1, __ATOMIC_RELAXED);
 		Xenon_FillFrame(s_frames + (tail % XENON_AUDIO_QUEUE) * XENON_AUDIO_FRAME_FLOATS);
+		__atomic_fetch_add(&s_frames_filled, 1, __ATOMIC_RELAXED);
 		tail++;
 		__atomic_store_n(&s_ready_tail, tail, __ATOMIC_RELEASE);
 	}
@@ -73,17 +134,42 @@ static uint32_t Xenon_FeederMain(void *context)
 static void Xenon_RenderCallback(const uint32_t *context)
 {
 	(void)context;
+	__atomic_fetch_add(&s_callbacks_entered, 1, __ATOMIC_RELAXED);
 
 	const uint32_t driver = __atomic_load_n(&s_driver, __ATOMIC_ACQUIRE);
-	if (!driver)
+	if (!driver) {
+		__atomic_fetch_add(&s_callbacks_driver_zero, 1, __ATOMIC_RELAXED);
 		return;
+	}
 
 	const uint32_t head = __atomic_load_n(&s_ready_head, __ATOMIC_RELAXED);
 	const uint32_t tail = __atomic_load_n(&s_ready_tail, __ATOMIC_ACQUIRE);
 	const int ready = tail != head;
+	const uint32_t slot = ready ? head % XENON_AUDIO_QUEUE : UINT32_MAX;
+	const float *frame = ready ? s_frames + slot * XENON_AUDIO_FRAME_FLOATS : s_silence;
+	if (ready) {
+		float peak = 0.0f;
+		union { float f; uint32_t u; } peak_bits;
+		for (uint32_t i = 0; i < XENON_AUDIO_FRAME_SAMPLES; i++) {
+			const float left = frame[i] < 0.0f ? -frame[i] : frame[i];
+			const float right = frame[XENON_AUDIO_FRAME_SAMPLES + i] < 0.0f ? -frame[XENON_AUDIO_FRAME_SAMPLES + i] : frame[XENON_AUDIO_FRAME_SAMPLES + i];
+			if (left > peak) peak = left;
+			if (right > peak) peak = right;
+		}
+		peak_bits.f = peak;
+		__atomic_store_n(&s_last_queue_peak_bits, peak_bits.u, __ATOMIC_RELAXED);
+		__atomic_fetch_add(&s_frames_submitted, 1, __ATOMIC_RELAXED);
+	} else {
+		__atomic_fetch_add(&s_silent_frames_submitted, 1, __ATOMIC_RELAXED);
+	}
+	__atomic_store_n(&s_last_frame_pointer, (uint32_t)(uintptr_t)frame, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_last_frame_slot, slot, __ATOMIC_RELAXED);
 
-	(void)XAudioSubmitRenderDriverFrame(driver,
-		ready ? s_frames + (head % XENON_AUDIO_QUEUE) * XENON_AUDIO_FRAME_FLOATS : s_silence);
+	const uint32_t submit_result = XAudioSubmitRenderDriverFrame(driver, frame);
+	if (submit_result != ERROR_SUCCESS) {
+		__atomic_fetch_add(&s_submit_errors, 1, __ATOMIC_RELAXED);
+		__atomic_store_n(&s_last_submit_result, submit_result, __ATOMIC_RELAXED);
+	}
 	if (ready)
 		__atomic_store_n(&s_ready_head, head + 1, __ATOMIC_RELEASE);
 	(void)NtSetEvent(s_event, NULL);
@@ -105,6 +191,25 @@ qboolean SNDDMA_Init(void)
 {
 	NTSTATUS status;
 	uint32_t driver = 0;
+	if (!s_sndDebug) {
+		s_sndDebug = Cvar_Get("x360_sndDebug", "0", 0);
+		Cvar_SetDescription(s_sndDebug, "Print Xenon audio callback and queue counters once per second.");
+	}
+	s_audio_init_time = Sys_Milliseconds();
+	s_last_debug_time = s_audio_init_time;
+	s_first_callback_reported = qfalse;
+	s_no_callback_reported = qfalse;
+	__atomic_store_n(&s_callbacks_entered, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_callbacks_driver_zero, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_frames_submitted, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_silent_frames_submitted, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_submit_errors, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_last_submit_result, ERROR_SUCCESS, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_last_queue_peak_bits, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_last_frame_pointer, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_last_frame_slot, UINT32_MAX, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_inflight_overwrites, 0, __ATOMIC_RELAXED);
+	__atomic_store_n(&s_frames_filled, 0, __ATOMIC_RELAXED);
 
 	memset(s_ring, 0, sizeof(s_ring));
 	s_frames = MmAllocatePhysicalMemoryEx(0, XENON_AUDIO_FRAME_BYTES * (XENON_AUDIO_QUEUE + 1), PAGE_READWRITE, 0,
@@ -141,6 +246,8 @@ qboolean SNDDMA_Init(void)
 	s_client.callback = Xenon_RenderCallback;
 	s_client.context = 0;
 	status = XAudioRegisterRenderDriverClient(&s_client, &driver);
+	Com_Printf("Xenon audio: render driver id=%u frames virtual=0x%08X physical=0x%08X frameBytes=%u\n",
+		(unsigned)driver, (unsigned)(uintptr_t)s_frames, (unsigned)MmGetPhysicalAddress(s_frames), (unsigned)XENON_AUDIO_FRAME_BYTES);
 	if (status != ERROR_SUCCESS) {
 		Com_Printf("Xenon audio: XAudioRegisterRenderDriverClient failed: 0x%08X\n", (unsigned)status);
 		goto fail;
@@ -168,6 +275,7 @@ fail:
 
 int SNDDMA_GetDMAPos(void)
 {
+	Xenon_AudioDebugThink();
 	const uint32_t pairs = __atomic_load_n(&s_read_pairs, __ATOMIC_ACQUIRE) % XENON_AUDIO_FULLSAMPLES;
 	return (int)(pairs * XENON_AUDIO_CHANNELS);
 }

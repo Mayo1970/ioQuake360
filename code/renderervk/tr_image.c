@@ -760,6 +760,12 @@ static void upload_vk_image( image_t *image, byte *pic ) {
 
 	w = upload_data.base_level_width;
 	h = upload_data.base_level_height;
+#ifdef __XSDK__
+	if ( x360_texDebug && x360_texDebug->integer == 1 ) {
+		upload_data.mip_levels = 1;
+		upload_data.buffer_size = w * h * 4;
+	}
+#endif
 
 	if ( r_texturebits->integer > 16 || r_texturebits->integer == 0 || ( image->flags & IMGFLAG_LIGHTMAP ) ) {
 		image->internalFormat = VK_FORMAT_R8G8B8A8_UNORM;

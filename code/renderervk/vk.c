@@ -5053,6 +5053,50 @@ static byte *resample_image_data( const int target_format, byte *data, const int
 	}
 }
 
+#ifdef __XSDK__
+static void x360_fill_texture_debug_pixels( byte *pixels, int size, int width, int height, int mipmaps, int mode )
+{
+	static const byte mipColors[6][3] = {
+		{ 255, 48, 48 }, { 255, 220, 32 }, { 32, 240, 64 },
+		{ 32, 224, 255 }, { 48, 64, 255 }, { 240, 48, 255 }
+	};
+	int level, w = width, h = height, offset = 0;
+
+	if ( !pixels || ( mode != 2 && mode != 4 ) )
+		return;
+
+	for ( level = 0; level < mipmaps; level++ ) {
+		int x, y;
+		const int levelBytes = w * h * 4;
+
+		if ( levelBytes > size - offset )
+			break;
+
+		for ( y = 0; y < h; y++ ) {
+			for ( x = 0; x < w; x++ ) {
+				byte *pixel = pixels + offset + ( y * w + x ) * 4;
+				if ( mode == 2 ) {
+					const qboolean bright = ( ( x >> 3 ) ^ ( y >> 3 ) ) & 1;
+					const byte *color = mipColors[level % ARRAY_LEN( mipColors )];
+					pixel[0] = bright ? color[0] : color[0] / 8;
+					pixel[1] = bright ? color[1] : color[1] / 8;
+					pixel[2] = bright ? color[2] : color[2] / 8;
+				} else {
+					pixel[0] = w > 1 ? ( x * 255 ) / ( w - 1 ) : 0;
+					pixel[1] = h > 1 ? ( y * 255 ) / ( h - 1 ) : 0;
+					pixel[2] = 64;
+				}
+				pixel[3] = 255;
+			}
+		}
+
+		offset += levelBytes;
+		w = MAX( 1, w >> 1 );
+		h = MAX( 1, h >> 1 );
+	}
+}
+#endif
+
 
 void vk_upload_image_data( image_t *image, int x, int y, int width, int height, int mipmaps, byte *pixels, int size, qboolean update ) {
 
@@ -5064,6 +5108,24 @@ void vk_upload_image_data( image_t *image, int x, int y, int width, int height, 
 
 	int num_regions = 0;
 	int buffer_size = 0;
+
+#ifdef __XSDK__
+	if ( x360_texDebug ) {
+		if ( x360_texDebug->integer == 2 || x360_texDebug->integer == 4 )
+			x360_fill_texture_debug_pixels( pixels, size, width, height, mipmaps, x360_texDebug->integer );
+		if ( x360_texDebug->integer == 3 && !update ) {
+			const char *formatName = "unknown";
+			switch ( image->internalFormat ) {
+			case VK_FORMAT_R8G8B8A8_UNORM: formatName = "R8G8B8A8_UNORM"; break;
+			case VK_FORMAT_B4G4R4A4_UNORM_PACK16: formatName = "B4G4R4A4_UNORM_PACK16"; break;
+			case VK_FORMAT_A1R5G5B5_UNORM_PACK16: formatName = "A1R5G5B5_UNORM_PACK16"; break;
+			}
+			ri.Printf( PRINT_ALL, "X360 texture upload: %s source=%dx%d upload=%dx%d format=%s(0x%X) levels=%d\n",
+				image->imgName, image->width, image->height, width, height, formatName,
+				(unsigned)image->internalFormat, mipmaps );
+		}
+	}
+#endif
 
 	buf = resample_image_data( image->internalFormat, pixels, size, &n /*bpp*/ );
 
