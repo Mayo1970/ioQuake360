@@ -511,7 +511,7 @@ void Sys_InitGamertag( void )
 
 	sys_gamertag[0] = '\0';
 	if ( xsdk_xam_signed_in_user( &user, raw ) == ERROR_SUCCESS ) {
-		// \ and ; split userinfo keys and " ends a value, so those are dropped.
+		// Info strings reject \ and ", and ; would end the command that sets the name.
 		for ( i = 0; i < sizeof( raw ) && raw[i] && n < sizeof( sys_gamertag ) - 1; i++ ) {
 			unsigned char c = (unsigned char)raw[i];
 
