@@ -348,7 +348,7 @@ static void XI_OpenNotifyListener(void)
 
 void IN_Init(void *windowData)
 {
-	char *ctrl;
+	char *ctrl, *r3;
 
 	(void)windowData;
 
@@ -367,7 +367,10 @@ void IN_Init(void *windowData)
 	if (ctrl && !Q_stricmp(ctrl, "+attack"))
 		Key_SetBinding(K_CTRL, "");
 	XI_SetDefaultBind(K_JOY9,  "+speed");
-	XI_SetDefaultBind(K_JOY10, "+scores");
+	/* R3 moved from +scores to turn180; old saved configs keep the old bind, so migrate it too. */
+	r3 = Key_GetBinding(K_JOY10);
+	if (!r3 || !r3[0] || !Q_stricmp(r3, "+scores"))
+		Key_SetBinding(K_JOY10, "turn180");
 	XI_SetDefaultBind(K_JOY11, "+scores");
 
 	Cvar_Set("in_joystick", "1");

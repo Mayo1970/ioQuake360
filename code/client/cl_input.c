@@ -298,6 +298,42 @@ static qboolean CL_AssistAllowed( void ) {
 	return v[0] ? ( atoi( v ) != 0 ) : !cl_connectedToPureServer;
 }
 
+static cvar_t	*cl_turn180time;
+static float	turn180Remaining;
+
+static void IN_Turn180_f( void ) {
+	if ( cl_connectedToPureServer ) {
+		Com_Printf( "turn180 is disabled on pure servers (sv_pure 1).\n" );
+		return;
+	}
+	if ( turn180Remaining > 0 ) {
+		return;
+	}
+	if ( cl_turn180time->integer <= 0 ) {
+		cl.viewangles[YAW] += 180;
+		return;
+	}
+	turn180Remaining = 180;
+}
+
+static void CL_Turn180Step( void ) {
+	float step;
+
+	if ( turn180Remaining <= 0 ) {
+		return;
+	}
+	if ( cl_turn180time->integer <= 0 ) {
+		step = turn180Remaining;
+	} else {
+		step = 180.0f * cls.frametime / cl_turn180time->integer;
+	}
+	if ( step > turn180Remaining ) {
+		step = turn180Remaining;
+	}
+	cl.viewangles[YAW] += step;
+	turn180Remaining -= step;
+}
+
 #define ASSIST_RANGE		4096.0f
 #define ASSIST_AIM_Z		8.0f		// aim a little above the origin (chest)
 #define ASSIST_GAIN			8.0f		// strength 1.0 = 8 / second at cone centre
@@ -496,6 +532,7 @@ void CL_AdjustAngles( void ) {
 	float	speed;
 
 #ifdef __XSDK__
+	CL_Turn180Step();
 	CL_AimAssistUpdate();
 #endif
 	
@@ -616,8 +653,8 @@ void CL_JoystickMove( usercmd_t *cmd ) {
 	}
 
 #ifdef __XSDK__
-	// The Setup slider only sets sensitivity (default 5); 0.8 makes the stick 20% slower at the default.
-	anglespeed *= 0.8f * cl_sensitivity->value / 5.0f;
+	// The Setup slider only sets sensitivity (default 5); 0.6 makes the stick 40% slower at the default.
+	anglespeed *= 0.6f * cl_sensitivity->value / 5.0f;
 #endif
 
 	if ( !in_strafe.active ) {
@@ -1214,6 +1251,8 @@ void CL_InitInput( void ) {
 	cl_debugMove = Cvar_Get ("cl_debugMove", "0", 0);
 
 #ifdef __XSDK__
+	Cmd_AddCommand ("turn180", IN_Turn180_f);
+	cl_turn180time = Cvar_Get ("cl_turn180time", "150", CVAR_ARCHIVE);
 	aimAssist.mode = Cvar_Get ("cl_aimAssist", "1", CVAR_ARCHIVE);
 	aimAssist.angle = Cvar_Get ("cl_aimAssistAngle", "5", CVAR_ARCHIVE);
 	aimAssist.strength = Cvar_Get ("cl_aimAssistStrength", "0.80", CVAR_ARCHIVE);
@@ -1228,6 +1267,9 @@ CL_ShutdownInput
 void CL_ShutdownInput(void)
 {
 	Cmd_RemoveCommand("centerview");
+#ifdef __XSDK__
+	Cmd_RemoveCommand("turn180");
+#endif
 
 	Cmd_RemoveCommand("+moveup");
 	Cmd_RemoveCommand("-moveup");

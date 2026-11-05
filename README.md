@@ -202,7 +202,7 @@ LS, RS and BACK; configs store them as `PAD_A` ... `PAD_BACK`.
 | **LB** | Strafe left |
 | **RB** | Strafe right |
 | **LS** (click) | Run / walk toggle |
-| **RS** (click) | Scoreboard |
+| **RS** (click) | Quick 180° turn |
 | **Back** | Scoreboard |
 | **Start** | Menu (Escape) |
 | **Back + A** | Open chat |
@@ -230,6 +230,14 @@ Pulls the view toward the nearest visible enemy inside a small cone, weaker whil
 | `cl_aimAssist` | `1` | 0 = off, 1 = on, 2 = only while zoomed |
 | `cl_aimAssistAngle` | `5` | cone half-angle in degrees, max 45 |
 | `cl_aimAssistStrength` | `0.80` | clamps to `[0, 1]` |
+
+### Quick turn
+
+**RS** turns the view 180°. Disabled on pure servers (`sv_pure 1`).
+
+| Cvar | Default | Notes |
+|---|---|---|
+| `cl_turn180time` | `150` | turn time in ms, 0 = instant |
 
 ### Menus
 
