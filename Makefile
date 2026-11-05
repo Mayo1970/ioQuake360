@@ -394,6 +394,7 @@ xsdk-patches:
 	$(call apply_patch,$(XSDK),patches/x360-sdk/0001-specialization-constants.patch)
 	$(call apply_patch,$(XSDK),patches/x360-sdk/0002-xex-title-icon.patch)
 	$(call apply_patch,$(XSDK),patches/x360-sdk/0003-log-switch.patch)
+	$(call apply_patch,$(XSDK),patches/x360-sdk/0004-black-display-surface.patch)
 
 vulkan4xenon-patches:
 	$(call apply_patch,vulkan4xenon,$(VULKAN4XENON_PATCH))

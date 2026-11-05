@@ -1,0 +1,121 @@
+diff --git a/src/display.c b/src/display.c
+index 2c81e3f57ed1cf5435d662dd77e3f5204d249f8a..9f18d3798b3eb53df707435f277a003274249781 100644
+--- a/src/display.c
++++ b/src/display.c
+@@ -61,6 +61,8 @@ enum {
+ 	// Three frames at 60 Hz.
+ 	SCALER_TAKE_TIMEOUT_US = 50000,
+ 	MICROSECONDS_PER_SECOND = 1000000,
++	// Opaque black as the display reads a word, as BLACK in src/present.c.
++	BLANK_BLACK = 0x000000FF,
+ };
+ 
+ typedef struct {
+@@ -107,6 +109,9 @@ static uint32_t output_width;
+ static uint32_t output_height;
+ // The size of the surface shown, while scaling: the front buffer's, or XAM's while the Guide shows.
+ static DisplaySize shown_size;
++// Black stand-in for XAM's surface at address 0, kept until xsdk_gpu_close hands the display back to XAM.
++static volatile uint32_t *blank;
++static uint32_t blank_address;
+ 
+ // libxenon's autofill of a linear ramp; the screen stays black without it (libxenon:drivers/xenos/xenos.c:419-424).
+ static NTSTATUS fill_lut(void)
+@@ -209,6 +214,8 @@ bool xsdk_display_plan(uint32_t width, uint32_t height, uint32_t pitch, DisplayS
+ 	return true;
+ }
+ 
++static NTSTATUS apply(const Surface *surface);
++
+ NTSTATUS xsdk_display_open(XsdkDisplayMode mode, uint32_t *width, uint32_t *height)
+ {
+ 	assert(!is_open);
+@@ -218,17 +225,36 @@ NTSTATUS xsdk_display_open(XsdkDisplayMode mode, uint32_t *width, uint32_t *heig
+ 		xsdk_log_write("display: no display controller");
+ 		return STATUS_NOT_SUPPORTED;
+ 	}
+-	const NTSTATUS status = fill_lut();
+-	if (!NT_SUCCESS(status)) {
+-		xsdk_log_write("display: the LUT autofill didn't finish: 0x%08X", (unsigned)status);
+-		return status;
+-	}
+ 	old_surface = (Surface){
+ 		.address = gpu_registers[D1GRPH_PRIMARY_SURFACE_ADDRESS],
+ 		.pitch = gpu_registers[D1GRPH_PITCH],
+ 		.x_end = gpu_registers[D1GRPH_X_END],
+ 		.y_end = gpu_registers[D1GRPH_Y_END],
+ 	};
++	if (!blank) {
++		const uint32_t blank_bytes = xsdk_gpu_resolve_bytes(old_surface.pitch, old_surface.y_end);
++		blank = xsdk_gpu_alloc(blank_bytes);
++		if (!blank) {
++			xsdk_log_write("display: no memory for the black surface");
++		} else {
++			for (uint32_t i = 0; i < blank_bytes / 4; i++)
++				blank[i] = BLANK_BLACK;
++			__asm__ volatile("sync" ::: "memory");
++			blank_address = xsdk_gpu_address(blank);
++		}
++	}
++	if (blank) {
++		const Surface surface = { .address = blank_address, .pitch = old_surface.pitch, .x_end = old_surface.x_end,
++			.y_end = old_surface.y_end };
++		const NTSTATUS blank_status = apply(&surface);
++		if (!NT_SUCCESS(blank_status))
++			xsdk_log_write("display: the black surface didn't show: 0x%08X", (unsigned)blank_status);
++	}
++	const NTSTATUS status = fill_lut();
++	if (!NT_SUCCESS(status)) {
++		xsdk_log_write("display: the LUT autofill didn't finish: 0x%08X", (unsigned)status);
++		return status;
++	}
+ 	scaling = mode == XSDK_DISPLAY_720P && plan_scaler();
+ 	scaler_applied = false;
+ 	*width = scaling ? WIDTH_720P : viewport >> 16;
+@@ -351,6 +377,20 @@ void xsdk_display_close(void)
+ 		return;
+ 	if (scaler_applied)
+ 		write_scaler(old_scaler);
+-	(void)apply(&old_surface);
++	if (blank) {
++		const Surface surface = { .address = blank_address, .pitch = old_surface.pitch, .x_end = old_surface.x_end,
++			.y_end = old_surface.y_end };
++		(void)apply(&surface);
++	} else {
++		(void)apply(&old_surface);
++	}
+ 	is_open = false;
+ }
++
++void xsdk_display_release_blank(void)
++{
++	if (blank)
++		xsdk_gpu_free(blank);
++	blank = NULL;
++	blank_address = 0;
++}
+diff --git a/src/gpu.c b/src/gpu.c
+index 6aa272bf6d336ac2408f5abb3874e52e3520fd39..bd946041bfc50f35d18346fb94e147b6ffd07806 100644
+--- a/src/gpu.c
++++ b/src/gpu.c
+@@ -420,6 +420,7 @@ NTSTATUS xsdk_gpu_close(void)
+ 	// So XAM's device, back with the GPU, never reads the page once it's freed.
+ 	VdSetSystemCommandBufferGpuIdentifierAddress(NULL);
+ 	VdShutdownEngines();
++	xsdk_display_release_blank();
+ 	free_memory();
+ 	return STATUS_SUCCESS;
+ }
+diff --git a/src/gpu_private.h b/src/gpu_private.h
+index f2bf7e1e8e78ee8c41ee6284074e2af875b51934..7628bed44d90c73e1deba3da15b278c3bde07c51 100644
+--- a/src/gpu_private.h
++++ b/src/gpu_private.h
+@@ -301,6 +301,8 @@ void xsdk_gpu_resolve_band(uint32_t target, const XsdkTexture *texture, const fl
+ 	uint32_t rows, bool clear_color, bool clear_depth);
+ // Points the shown surface at another buffer of its size; for the vblank callback, so it never sleeps.
+ void xsdk_display_flip(uint32_t address);
++// Frees display's black surface; xsdk_gpu_close calls it once XAM has the display back.
++void xsdk_display_release_blank(void);
+ 
+ enum {
+ 	DISPLAY_SCALER_REGISTERS = 10,
