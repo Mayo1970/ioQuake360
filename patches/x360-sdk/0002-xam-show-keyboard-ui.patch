@@ -1,0 +1,52 @@
+diff --git a/imports/imports.txt b/imports/imports.txt
+index 81073f1..f1d30bf 100644
+--- a/imports/imports.txt
++++ b/imports/imports.txt
+@@ -85,3 +85,4 @@ xam.xex       0x192  XamInputSetState
+ xam.xex       0x1A9  XamLoaderTerminateTitle
+ xam.xex       0x28A  XamNotifyCreateListener
+ xam.xex       0x28B  XNotifyGetNext
++xam.xex       0x2C1  XamShowKeyboardUI
+diff --git a/include/xsdk/kernel.h b/include/xsdk/kernel.h
+index 9656bcf..b9504ec 100644
+--- a/include/xsdk/kernel.h
++++ b/include/xsdk/kernel.h
+@@ -211,7 +211,9 @@ enum {
+ // Win32 errors that XAM returns (xenia:src/xenia/xbox.h:86-100).
+ enum {
+ 	ERROR_SUCCESS = 0,
++	ERROR_IO_PENDING = 0x3E5,
+ 	ERROR_DEVICE_NOT_CONNECTED = 0x48F,
++	ERROR_CANCELLED = 0x4C7,
+ };
+ 
+ // xenia:src/xenia/kernel/xboxkrnl/xboxkrnl_threading.cc:357
+@@ -433,6 +435,17 @@ int32_t NetDll_XNetDnsLookup(uint32_t caller, const char *name, HANDLE event, XN
+ int32_t NetDll_XNetDnsRelease(uint32_t caller, XNDNS *result);
+ // params is XNetStartupParams, 13 bytes, its first its size (xam_net.cc:154-168).
+ int32_t NetDll_XNetStartup(uint32_t caller, const uint8_t *params);
++// XAM's async request block, all fields big endian u32 (xenia:src/xenia/xbox.h, XAM_OVERLAPPED).
++typedef struct {
++	volatile uint32_t result;
++	volatile uint32_t length;
++	uint32_t context;
++	HANDLE event;
++	uint32_t completion_routine;
++	uint32_t completion_context;
++	volatile uint32_t extended_error;
++} XAM_OVERLAPPED;
++
+ uint32_t XamInputGetState(uint32_t user_index, uint32_t flags, INPUT_STATE *state);
+ uint32_t XamInputSetState(uint32_t user_index, uint32_t flags, const INPUT_VIBRATION *vibration);
+ void XamLoaderTerminateTitle(void);
+@@ -442,6 +455,10 @@ HANDLE XamNotifyCreateListener(uint64_t mask, uint32_t max_version);
+ // Takes the listener's next notification, or its next match_id one if that's nonzero; nonzero if there was one
+ // (xenia:src/xenia/kernel/xam/xam_notify.cc:53-91).
+ uint32_t XNotifyGetNext(HANDLE listener, uint32_t match_id, uint32_t *id, uint32_t *param);
++// Shows the system keyboard; strings are UTF-16, buffer holds buffer_length chars. Returns ERROR_IO_PENDING and
++// completes overlapped when closed (xenia:src/xenia/kernel/xam/xam_ui.cc, XamShowKeyboardUI).
++uint32_t XamShowKeyboardUI(uint32_t user_index, uint32_t flags, const uint16_t *default_text, const uint16_t *title,
++	const uint16_t *description, uint16_t *buffer, uint32_t buffer_length, XAM_OVERLAPPED *overlapped);
+ 
+ #ifdef __cplusplus
+ }

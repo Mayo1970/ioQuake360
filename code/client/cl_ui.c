@@ -26,6 +26,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 extern	botlib_export_t	*botlib_export;
 
+#ifdef __XSDK__
+extern void XI_NoteUIFieldCursor(void);
+#endif
+
 vm_t *uivm;
 
 /*
@@ -887,6 +891,10 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return Key_IsDown( args[1] );
 
 	case UI_KEY_GETOVERSTRIKEMODE:
+#ifdef __XSDK__
+		/* Only a focused text field asks for overstrike mode, which marks it for the pad keyboard. */
+		XI_NoteUIFieldCursor();
+#endif
 		return Key_GetOverstrikeMode();
 
 	case UI_KEY_SETOVERSTRIKEMODE:

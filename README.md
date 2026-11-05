@@ -205,6 +205,7 @@ LS, RS and BACK; configs store them as `PAD_A` ... `PAD_BACK`.
 | **Start** | Menu (Escape) |
 | **Back + A** | Open chat |
 | **Back + Y** | Toggle console |
+| **A** (console or chat open) | Open the system keyboard |
 | **Back + Start** | Quit to dashboard (coming later) |
 | **LS + RS** | Toggle rumble on/off (coming later) |
 
@@ -224,6 +225,7 @@ Triggered on own pain, own weapon fire and hit feedback.
 | Left / Right stick | Move cursor |
 | D-pad | Arrow keys |
 | **A** | Confirm (Enter) |
+| **A** on a text field | Open the system keyboard (TA: one A enters the field and opens it) |
 | **B** | Back (Escape) |
 | **Start** | Escape |
 
