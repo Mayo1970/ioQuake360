@@ -619,6 +619,13 @@ vm_t *VM_Create( const char *module, intptr_t (*systemCalls)(intptr_t *),
 		vm->dllHandle = Sys_LoadGameDll( module, &vm->entryPoint, VM_DllSyscall );
 		if( vm->dllHandle )
 		{
+			fileHandle_t qvm;
+
+			// Open the QVM once, as a QVM load would: it marks its pak for a pure server's cp check.
+			FS_FOpenFileRead( va( "vm/%s.qvm", module ), &qvm, qfalse );
+			if( qvm )
+				FS_FCloseFile( qvm );
+
 			vm->systemCall = systemCalls;
 			Com_Printf( "%s: using linked-in native code\n", module );
 			return vm;
