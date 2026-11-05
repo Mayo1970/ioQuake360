@@ -355,12 +355,6 @@ static void R_LoadMergedLightmaps( const lump_t *l, byte *image )
 	int			i, x, y;
  	float		maxIntensity = 0;
 
-#ifdef __XSDK__
-	byte		*atlas;
-	int			row;
-	int			atlasSize;
-#endif
-
 	if ( l->filelen < LIGHTMAP_SIZE * LIGHTMAP_SIZE * 3 )
 		return;
 
@@ -373,20 +367,10 @@ static void R_LoadMergedLightmaps( const lump_t *l, byte *image )
 
 	tr.lightmaps = ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
 
-#ifdef __XSDK__
-	// vulkan4xenon copies only whole levels, so each atlas is built here and uploaded once
-	atlasSize = lightmapWidth * lightmapHeight * 4;
-	atlas = ri.Hunk_AllocateTempMemory( atlasSize );
-#endif
-
 	for ( offs = 0, i = 0 ; i < tr.numLightmaps; i++ ) {
 
 		tr.lightmaps[ i ] = R_CreateImage( va( "*mergedLightmap%d", i ), NULL, NULL,
 			lightmapWidth, lightmapHeight, lightmapFlags | IMGFLAG_CLAMPTOBORDER );
-
-#ifdef __XSDK__
-		Com_Memset( atlas, 0, atlasSize );
-#endif
 
 		for ( y = 0; y < lightmapCountY; y++ ) {
 			if ( offs >= l->filelen )
@@ -399,14 +383,7 @@ static void R_LoadMergedLightmaps( const lump_t *l, byte *image )
 				R_ProcessLightmap( image, buf + offs, maxIntensity );
 				
 #ifdef USE_VULKAN
-#ifdef __XSDK__
-				for ( row = 0; row < LIGHTMAP_LEN; row++ ) {
-					Com_Memcpy( atlas + ((y * LIGHTMAP_LEN + row) * lightmapWidth + x * LIGHTMAP_LEN) * 4,
-						image + row * LIGHTMAP_LEN * 4, LIGHTMAP_LEN * 4 );
-				}
-#else
 				vk_upload_image_data( tr.lightmaps[ i ], x * LIGHTMAP_LEN, y * LIGHTMAP_LEN, LIGHTMAP_LEN, LIGHTMAP_LEN, 1, image, LIGHTMAP_LEN * LIGHTMAP_LEN * 4, qtrue );
-#endif
 #else
 				R_UploadSubImage( image, x * LIGHTMAP_LEN, y * LIGHTMAP_LEN, LIGHTMAP_LEN, LIGHTMAP_LEN, tr.lightmaps[ i ] );
 #endif
@@ -414,19 +391,12 @@ static void R_LoadMergedLightmaps( const lump_t *l, byte *image )
 				offs += LIGHTMAP_SIZE * LIGHTMAP_SIZE * 3;
 			}
 		}
-#ifdef __XSDK__
-		vk_upload_image_data( tr.lightmaps[ i ], 0, 0, lightmapWidth, lightmapHeight, 1, atlas, atlasSize, qtrue );
-#endif
 #ifdef USE_VULKAN
 		//
 #else
 		ri.Printf( PRINT_DEVELOPER, "lightmaps[%i]=%i\n", i, tr.lightmaps[i]->texnum );
 #endif
 	}
-
-#ifdef __XSDK__
-	ri.Hunk_FreeTempMemory( atlas );
-#endif
 
 	//if ( r_lightmap->integer == 2 )	{
 	//	ri.Printf( PRINT_ALL, "Brightest lightmap value: %d\n", ( int ) ( maxIntensity * 255 ) );
