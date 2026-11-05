@@ -130,6 +130,12 @@ static PFN_vkGetImageMemoryRequirements2KHR				qvkGetImageMemoryRequirements2KHR
 
 static PFN_vkDebugMarkerSetObjectNameEXT				qvkDebugMarkerSetObjectNameEXT;
 
+#ifdef __XSDK__
+static qboolean vk_dyn_separate_enabled;
+static uint32_t vk_dyn_separate_fallback_count;
+static int vk_dyn_separate_last_fallback_log;
+#endif
+
 ////////////////////////////////////////////////////////////////////////////
 
 // forward declaration
@@ -2584,6 +2590,25 @@ static void vk_release_geometry_buffers( void )
 {
 	int i;
 
+#ifdef __XSDK__
+	for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ ) {
+		uint32_t j;
+		for ( j = 0; j < vk.tess[i].dyn_separate_buffer_count; j++ ) {
+			qvkDestroyBuffer( vk.device, vk.tess[i].dyn_separate_buffers[j].buffer, NULL );
+		}
+		if ( vk.tess[i].dyn_separate_buffers ) {
+			Z_Free( vk.tess[i].dyn_separate_buffers );
+			vk.tess[i].dyn_separate_buffers = NULL;
+		}
+		vk.tess[i].dyn_separate_buffer_count = 0;
+		vk.tess[i].dyn_separate_buffer_next = 0;
+		vk.tess[i].dyn_separate_memory_used = 0;
+		vk.tess[i].dyn_separate_pool_limit = 0;
+		vk.tess[i].dyn_separate_shared_offset = 0;
+		vk.tess[i].dyn_separate_fallback = qfalse;
+	}
+#endif
+
 	for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ ) {
 		qvkDestroyBuffer( vk.device, vk.tess[i].vertex_buffer, NULL );
 		vk.tess[i].vertex_buffer = VK_NULL_HANDLE;
@@ -2639,6 +2664,12 @@ static void vk_create_geometry_buffers( VkDeviceSize size )
 		qvkBindBufferMemory( vk.device, vk.tess[i].vertex_buffer, vk.geometry_buffer_memory, vertex_buffer_offset );
 		vk.tess[i].vertex_buffer_ptr = (byte*)data + vertex_buffer_offset;
 		vk.tess[i].vertex_buffer_offset = 0;
+#ifdef __XSDK__
+		vk.tess[i].dyn_separate_memory_base = vertex_buffer_offset;
+		vk.tess[i].dyn_separate_memory_used = PAD( vertex_buffer_offset, 64 ) - vertex_buffer_offset;
+		vk.tess[i].dyn_separate_pool_limit = size / 2;
+		vk.tess[i].dyn_separate_shared_offset = PAD( size / 2, vk.uniform_alignment > 32 ? vk.uniform_alignment : 32 );
+#endif
 		vertex_buffer_offset += vb_memory_requirements.size;
 
 		SET_OBJECT_NAME( vk.tess[i].vertex_buffer, va( "geometry buffer %i", i ), VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT );
@@ -4806,6 +4837,11 @@ __cleanup:
 
 	Com_Memset( &vk, 0, sizeof( vk ) );
 	Com_Memset( &vk_world, 0, sizeof( vk_world ) );
+#ifdef __XSDK__
+	vk_dyn_separate_enabled = qfalse;
+	vk_dyn_separate_fallback_count = 0;
+	vk_dyn_separate_last_fallback_log = 0;
+#endif
 	
 	if ( code != REF_KEEP_CONTEXT ) {
 		vk_destroy_instance();
@@ -7075,6 +7111,91 @@ static VkBuffer shade_bufs[8];
 static int bind_base;
 static int bind_count;
 
+#ifdef __XSDK__
+static qboolean vk_dyn_separate_alloc( VkDeviceSize size, VkBuffer *buffer, byte **mapped )
+{
+	vk_dyn_separate_buffer_t *pool;
+	VkBufferCreateInfo desc;
+	VkMemoryRequirements requirements;
+	VkDeviceSize alignment;
+	VkDeviceSize memory_offset;
+	VkDeviceSize pool_limit = vk.cmd->dyn_separate_pool_limit;
+	uint32_t i;
+
+	if ( !vk_dyn_separate_enabled || vk.cmd->dyn_separate_fallback || !size )
+		return qfalse;
+
+	if ( !vk.cmd->dyn_separate_buffers ) {
+		vk.cmd->dyn_separate_buffers = (vk_dyn_separate_buffer_t *)Z_Malloc( sizeof( vk_dyn_separate_buffer_t ) * VK_DYN_SEPARATE_MAX_BUFFERS );
+		Com_Memset( vk.cmd->dyn_separate_buffers, 0, sizeof( vk_dyn_separate_buffer_t ) * VK_DYN_SEPARATE_MAX_BUFFERS );
+	}
+	pool = vk.cmd->dyn_separate_buffers;
+
+	// Keep each handle bound to its slice and reuse it only after this command slot's fence.
+	for ( i = vk.cmd->dyn_separate_buffer_next; i < vk.cmd->dyn_separate_buffer_count; i++ ) {
+		if ( pool[i].size >= size ) {
+			if ( i != vk.cmd->dyn_separate_buffer_next ) {
+				vk_dyn_separate_buffer_t swap = pool[i];
+				pool[i] = pool[vk.cmd->dyn_separate_buffer_next];
+				pool[vk.cmd->dyn_separate_buffer_next] = swap;
+			}
+			*buffer = pool[vk.cmd->dyn_separate_buffer_next].buffer;
+			*mapped = pool[vk.cmd->dyn_separate_buffer_next].mapped;
+			vk.cmd->dyn_separate_buffer_next++;
+			return qtrue;
+		}
+	}
+
+	if ( vk.cmd->dyn_separate_buffer_count >= VK_DYN_SEPARATE_MAX_BUFFERS )
+		return qfalse;
+
+	Com_Memset( &desc, 0, sizeof( desc ) );
+	desc.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	desc.size = size;
+	desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	desc.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, buffer ) );
+	qvkGetBufferMemoryRequirements( vk.device, *buffer, &requirements );
+	alignment = requirements.alignment > 64 ? requirements.alignment : 64;
+	memory_offset = PAD( vk.cmd->dyn_separate_memory_base + vk.cmd->dyn_separate_memory_used, alignment ) - vk.cmd->dyn_separate_memory_base;
+	if ( memory_offset + requirements.size > pool_limit ) {
+		qvkDestroyBuffer( vk.device, *buffer, NULL );
+		*buffer = VK_NULL_HANDLE;
+		return qfalse;
+	}
+	VK_CHECK( qvkBindBufferMemory( vk.device, *buffer, vk.geometry_buffer_memory, vk.cmd->dyn_separate_memory_base + memory_offset ) );
+
+	pool[vk.cmd->dyn_separate_buffer_count].buffer = *buffer;
+	pool[vk.cmd->dyn_separate_buffer_count].mapped = vk.cmd->vertex_buffer_ptr + memory_offset;
+	pool[vk.cmd->dyn_separate_buffer_count].size = size;
+	*buffer = pool[vk.cmd->dyn_separate_buffer_count].buffer;
+	*mapped = pool[vk.cmd->dyn_separate_buffer_count].mapped;
+	vk.cmd->dyn_separate_buffer_count++;
+	vk.cmd->dyn_separate_buffer_next++;
+	vk.cmd->dyn_separate_memory_used = memory_offset + requirements.size;
+	return qtrue;
+}
+
+
+static void vk_dyn_separate_fallback( void )
+{
+	if ( !vk.cmd->dyn_separate_fallback ) {
+		vk.cmd->dyn_separate_fallback = qtrue;
+		vk_dyn_separate_fallback_count++;
+	}
+}
+
+
+static void vk_dyn_separate_reset_vertex_bindings( int count )
+{
+	int i;
+	for ( i = 0; i < count; i++ ) {
+		shade_bufs[i] = vk.cmd->vertex_buffer;
+		vk.cmd->buf_offset[i] = 0;
+	}
+}
+#endif
+
 static void vk_bind_index_attr( int index )
 {
 	if ( bind_base == -1 ) {
@@ -7087,6 +7208,21 @@ static void vk_bind_index_attr( int index )
 
 
 static void vk_bind_attr( int index, unsigned int item_size, const void *src ) {
+#ifdef __XSDK__
+	if ( vk_dyn_separate_enabled && !vk.cmd->dyn_separate_fallback ) {
+		VkBuffer buffer;
+		byte *mapped;
+		VkDeviceSize size = (VkDeviceSize)tess.numVertexes * item_size;
+		if ( vk_dyn_separate_alloc( size, &buffer, &mapped ) ) {
+			Com_Memcpy( mapped, src, size );
+			shade_bufs[index] = buffer;
+			vk.cmd->buf_offset[index] = 0;
+			vk_bind_index_attr( index );
+			return;
+		}
+		vk_dyn_separate_fallback();
+	}
+#endif
 	const uint32_t offset = PAD( vk.cmd->vertex_buffer_offset, 32 );
 	const uint32_t size = tess.numVertexes * item_size;
 
@@ -7153,6 +7289,20 @@ void vk_bind_index( void )
 
 void vk_bind_index_ext( const int numIndexes, const uint32_t *indexes )
 {
+#ifdef __XSDK__
+	// only here, not in vk_tess_index: the world VBO's soft buffer needs its indices appended contiguously
+	if ( vk_dyn_separate_enabled && !vk.cmd->dyn_separate_fallback ) {
+		VkBuffer buffer;
+		byte *mapped;
+		if ( vk_dyn_separate_alloc( (VkDeviceSize)numIndexes * sizeof( indexes[0] ), &buffer, &mapped ) ) {
+			Com_Memcpy( mapped, indexes, numIndexes * sizeof( indexes[0] ) );
+			vk_bind_index_buffer( buffer, 0 );
+			vk.cmd->num_indexes = numIndexes;
+			return;
+		}
+		vk_dyn_separate_fallback();
+	}
+#endif
 	uint32_t offset	= vk_tess_index( numIndexes, indexes );
 	if ( offset != ~0U ) {
 		vk_bind_index_buffer( vk.cmd->vertex_buffer, offset );
@@ -7224,6 +7374,10 @@ void vk_bind_geometry( uint32_t flags )
 #endif // USE_VBO
 	{
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = shade_bufs[3] = shade_bufs[4] = shade_bufs[5] = shade_bufs[6] = shade_bufs[7] = vk.cmd->vertex_buffer;
+#ifdef __XSDK__
+		if ( vk_dyn_separate_enabled )
+			vk_dyn_separate_reset_vertex_bindings( 8 );
+#endif
 
 		if ( flags & TESS_XYZ ) {
 			vk_bind_attr(0, sizeof(tess.xyz[0]), &tess.xyz[0]);
@@ -7283,6 +7437,10 @@ void vk_bind_lighting( int stage, int bundle )
 #endif // USE_VBO
 	{
 		shade_bufs[0] = shade_bufs[1] = shade_bufs[2] = vk.cmd->vertex_buffer;
+#ifdef __XSDK__
+		if ( vk_dyn_separate_enabled )
+			vk_dyn_separate_reset_vertex_bindings( 3 );
+#endif
 
 		vk_bind_attr( 0, sizeof( tess.xyz[0] ), &tess.xyz[0] );
 		vk_bind_attr( 1, sizeof( vec2_t ), tess.svars.texcoordPtr[ bundle ] );
@@ -7612,6 +7770,21 @@ void vk_begin_frame( void )
 		VK_CHECK( qvkResetFences( vk.device, 1, &vk.cmd->rendering_finished_fence ) );
 	}
 
+#ifdef __XSDK__
+	if ( x360_dynSeparate && x360_dynSeparate->integer ) {
+		if ( !vk_dyn_separate_enabled ) {
+			vk_dyn_separate_fallback_count = 0;
+			vk_dyn_separate_last_fallback_log = ri.Milliseconds() - 1000;
+			ri.Printf( PRINT_ALL, "x360_dynSeparate active: pool limit %u buffers, %u KiB per command slot\n",
+				VK_DYN_SEPARATE_MAX_BUFFERS, (unsigned int)( vk.tess[0].dyn_separate_pool_limit / 1024 ) );
+		}
+		vk_dyn_separate_enabled = qtrue;
+	} else {
+		vk_dyn_separate_enabled = qfalse;
+		vk_dyn_separate_fallback_count = 0;
+	}
+#endif
+
 	if ( !TR_CL_IsMinimized() && !vk.cmd->swapchain_image_acquired ) {
 		qboolean retry = qfalse;
 _retry:
@@ -7681,6 +7854,12 @@ _retry:
 	// dynamic vertex buffer layout
 	vk.cmd->uniform_read_offset = 0;
 	vk.cmd->vertex_buffer_offset = 0;
+#ifdef __XSDK__
+	vk.cmd->dyn_separate_buffer_next = 0;
+	vk.cmd->dyn_separate_fallback = qfalse;
+	if ( vk_dyn_separate_enabled )
+		vk.cmd->vertex_buffer_offset = vk.cmd->dyn_separate_shared_offset;
+#endif
 	Com_Memset( vk.cmd->buf_offset, 0, sizeof( vk.cmd->buf_offset ) );
 	Com_Memset( vk.cmd->vbo_offset, 0, sizeof( vk.cmd->vbo_offset ) );
 	vk.cmd->curr_index_buffer = VK_NULL_HANDLE;
@@ -7845,6 +8024,15 @@ void vk_end_frame( void )
 
 	VK_CHECK( qvkQueueSubmit( vk.queue, 1, &submit_info, vk.cmd->rendering_finished_fence ) );
 	vk.cmd->waitForFence = qtrue;
+
+#ifdef __XSDK__
+	if ( x360_waitIdle && x360_waitIdle->integer )
+		VK_CHECK( qvkWaitForFences( vk.device, 1, &vk.cmd->rendering_finished_fence, VK_TRUE, UINT64_MAX ) );
+	if ( vk_dyn_separate_fallback_count && ri.Milliseconds() - vk_dyn_separate_last_fallback_log >= 1000 ) {
+		ri.Printf( PRINT_ALL, "x360_dynSeparate fallbacks: %u frames\n", vk_dyn_separate_fallback_count );
+		vk_dyn_separate_last_fallback_log = ri.Milliseconds();
+	}
+#endif
 
 	// presentation may take undefined time to complete, we can't measure it in a reliable way
 	backEnd.pc.msec = ri.Milliseconds() - backEnd.pc.msec;

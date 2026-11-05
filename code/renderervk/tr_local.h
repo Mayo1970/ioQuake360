@@ -1366,6 +1366,8 @@ extern	cvar_t	*r_roundImagesDown;
 extern	cvar_t	*r_colorMipLevels;				// development aid to see texture mip usage
 #ifdef __XSDK__
 extern cvar_t *x360_texDebug;
+extern cvar_t *x360_waitIdle;
+extern cvar_t *x360_dynSeparate;
 #endif
 extern	cvar_t	*r_picmip;						// controls picmip values
 extern	cvar_t	*r_nomip;						// apply picmip only on worldspawn textures
