@@ -23,6 +23,15 @@
 
 #define NUM_COMMAND_BUFFERS 2	// number of command buffers / render semaphores / framebuffer sets
 
+#ifdef __XSDK__
+#define VK_DYN_SEPARATE_MAX_BUFFERS 4096
+typedef struct {
+	VkBuffer buffer;
+	byte *mapped;
+	VkDeviceSize size;
+} vk_dyn_separate_buffer_t;
+#endif
+
 #define USE_REVERSED_DEPTH
 
 //#define USE_UPLOAD_QUEUE
@@ -328,6 +337,16 @@ typedef struct vk_tess_s {
 	VkBuffer vertex_buffer;
 	byte *vertex_buffer_ptr; // pointer to mapped vertex buffer
 	uint32_t vertex_buffer_offset; // VkDeviceSize
+#ifdef __XSDK__
+	VkDeviceSize dyn_separate_memory_base;
+	VkDeviceSize dyn_separate_memory_used;
+	VkDeviceSize dyn_separate_pool_limit;
+	VkDeviceSize dyn_separate_shared_offset;
+	vk_dyn_separate_buffer_t *dyn_separate_buffers;
+	uint32_t dyn_separate_buffer_count;
+	uint32_t dyn_separate_buffer_next;
+	qboolean dyn_separate_fallback;
+#endif
 
 	VkDescriptorSet uniform_descriptor;
 	uint32_t		uniform_read_offset;
