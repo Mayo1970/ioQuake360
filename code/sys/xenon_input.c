@@ -5,6 +5,7 @@
 #include "../client/keycodes.h"
 #include "../client/client.h"
 #include "xsdk/kernel.h"
+#include "xsdk/xam.h"
 
 extern int Key_GetCatcher(void);
 extern void Key_SetBinding(int keynum, const char *binding);
@@ -18,6 +19,7 @@ extern char *Key_GetBinding(int keynum);
 #define XI_MENU_CURSOR_SPEED  5.0f
 #define XI_OSK_TEXT_MAX       256
 #define XI_OSK_TITLE_MAX      64
+#define XI_ERROR_CANCELLED    1223
 #define XI_UI_FOCUS_MS        100
 #define XI_TA_ENTER_MS        300
 #define XI_XN_SYS_UI          9
@@ -56,6 +58,8 @@ static int     s_rumbleExpiryMs = 0;
 static int     s_rumbleActive   = 0;
 
 static XAM_OVERLAPPED xi_osk_ov;
+/* Kept apart from the overlapped, which XAM writes until the call is done. */
+static uint32_t xi_osk_status;
 static uint16_t xi_osk_result[XI_OSK_TEXT_MAX];
 static uint16_t xi_osk_title[XI_OSK_TITLE_MAX];
 static const uint16_t xi_osk_empty[1] = { 0 };
@@ -177,17 +181,14 @@ static void XI_KeyboardOpen(const char *title, int maxlen, qboolean autoSubmit, 
 	XI_AsciiToUtf16(title, xi_osk_title, XI_OSK_TITLE_MAX);
 	memset(xi_osk_result, 0, sizeof(xi_osk_result));
 	memset(&xi_osk_ov, 0, sizeof(xi_osk_ov));
-	/* Pre-set, or a result of 0 would read as already closed before XAM answers. */
-	xi_osk_ov.result = ERROR_IO_PENDING;
 
-	ret = XamShowKeyboardUI(xi_active_port, 0, xi_osk_empty, xi_osk_title, xi_osk_empty, xi_osk_result,
+	ret = xsdk_xam_keyboard(xi_active_port, xi_osk_title, xi_osk_empty, xi_osk_empty, xi_osk_result,
 		maxlen + 1, &xi_osk_ov);
 	if (ret != ERROR_IO_PENDING && ret != ERROR_SUCCESS) {
-		Com_Printf("XamShowKeyboardUI failed: 0x%X\n", ret);
+		Com_Printf("xsdk_xam_keyboard failed: 0x%X\n", ret);
 		return;
 	}
-	if (ret != ERROR_IO_PENDING)
-		xi_osk_ov.result = ret;
+	xi_osk_status = ret;
 
 	xi_osk_auto_submit = autoSubmit;
 	xi_osk_prepend_slash = prependSlash;
@@ -195,19 +196,18 @@ static void XI_KeyboardOpen(const char *title, int maxlen, qboolean autoSubmit, 
 	xi_osk_enter_on_close = enterOnClose;
 	xi_osk_active = qtrue;
 	XI_ReleaseHeld();
-	Com_Printf("XamShowKeyboardUI opened\n");
+	Com_Printf("xsdk_xam_keyboard opened\n");
 }
 
 static void XI_KeyboardClose(void)
 {
-	uint32_t result = xi_osk_ov.result;
-	qboolean cancelled = (result == ERROR_CANCELLED || xi_osk_ov.extended_error == ERROR_CANCELLED);
+	qboolean failed = (xi_osk_status != ERROR_SUCCESS || xi_osk_ov.extended_error == XI_ERROR_CANCELLED);
 	int i;
 
 	xi_osk_active = qfalse;
 	xi_osk_resync = qtrue;
 
-	if (cancelled || result != ERROR_SUCCESS) {
+	if (failed) {
 		if (xi_osk_enter_on_close)
 			XI_TapKey(K_ENTER);
 		return;
@@ -442,8 +442,12 @@ void IN_Frame(void)
 
 	/* XAM owns the pad while the keyboard is up, so no pad events are sent. */
 	if (xi_osk_active) {
-		if (xi_osk_ov.result == ERROR_IO_PENDING)
-			return;
+		if (xi_osk_status == ERROR_IO_PENDING) {
+			uint32_t result = xsdk_xam_wait(&xi_osk_ov, 0, NULL);
+			if (result == ERROR_IO_INCOMPLETE)
+				return;
+			xi_osk_status = result;
+		}
 		XI_KeyboardClose();
 		return;
 	}

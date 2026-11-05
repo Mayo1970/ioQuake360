@@ -224,6 +224,21 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+### In titles that draw text, needing no notice
+
+`x360-sdk/assets/fonts/10x20.bdf`, and `x360-sdk/src/text_font.h` generated from it, are X11's misc-fixed 10x20,
+Markus Kuhn's ISO 10646 font, as X.Org's font-misc-misc 1.1.3 release ships it. Its `COPYRIGHT` property and the
+release's `COPYING` say it is public domain; a title ships no notice for it.
+
+### In the repository only
+
+These files aren't linked into titles, so a game doesn't need to ship their notices:
+
+- `x360-sdk/tests/tiled_index.h` and `x360-sdk/tests/probe_display.c`: `tiled_index` from libxenon's
+  `drivers/console/console.c`, copyright 2009 Georg Lukas, under the 3-clause BSD licence; the files carry the notice.
+- `x360-sdk/xenos-toolchain/xdis/xenos_ucode.py`: transcribed from Xenia's microcode definitions, under Xenia's
+  licence above; the file carries the notice.
+
 ## vulkan4xenon
 
 ```
