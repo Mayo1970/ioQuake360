@@ -570,7 +570,12 @@ NET_OutOfBandPrint
 Sends a text message in an out-of-band datagram
 ================
 */
+#ifdef __XSDK__
+void QDECL NET_OutOfBandPrintTo( netsrc_t sock, const netadr_t *adrPtr, const char *format, ... ) {
+	netadr_t	adr = *adrPtr;
+#else
 void QDECL NET_OutOfBandPrint( netsrc_t sock, netadr_t adr, const char *format, ... ) {
+#endif
 	va_list		argptr;
 	char		string[MAX_MSGLEN];
 

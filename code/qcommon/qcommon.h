@@ -165,7 +165,15 @@ void		NET_Restart_f( void );
 void		NET_Config( qboolean enableNetworking );
 void		NET_FlushPacketQueue(void);
 void		NET_SendPacket (netsrc_t sock, int length, const void *data, netadr_t to);
+#ifdef __XSDK__
+// By pointer: a by-value netadr_t pads the slots, so va_start spills r10 over the caller's 0x50(r1)
+// (x360-sdk/docs/HARDWARE.md, "Calls between GCC and MSVC"), corrupting the message buffer kept there.
+void		QDECL NET_OutOfBandPrintTo( netsrc_t net_socket, const netadr_t *adr, const char *format, ...) Q_PRINTF_FUNC(3, 4);
+#define NET_OutOfBandPrint( net_socket, adr, ... ) \
+	do { netadr_t q360_oobAddress = (adr); NET_OutOfBandPrintTo( (net_socket), &q360_oobAddress, __VA_ARGS__ ); } while ( 0 )
+#else
 void		QDECL NET_OutOfBandPrint( netsrc_t net_socket, netadr_t adr, const char *format, ...) Q_PRINTF_FUNC(3, 4);
+#endif
 void		QDECL NET_OutOfBandData( netsrc_t sock, netadr_t adr, byte *format, int len );
 
 qboolean	NET_CompareAdr (netadr_t a, netadr_t b);
