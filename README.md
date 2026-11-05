@@ -210,6 +210,7 @@ LS, RS and BACK; configs store them as `PAD_A` ... `PAD_BACK`.
 | **A** (console or chat open) | Open the system keyboard |
 | **Back + Start** | Quit to dashboard |
 | **LS + RS** | Toggle rumble on/off (coming later) |
+| **LB + RB** | Toggle aim assist on/off (default on) |
 
 ### Rumble
 
@@ -219,6 +220,16 @@ Triggered on own pain, own weapon fire and hit feedback.
 |---|---|---|
 | `x360_rumbleEnable` | `1` | 0 = off |
 | `x360_rumbleScale`  | `1.0` | clamps to `[0, 1]` |
+
+### Aim assist
+
+Pulls the view toward the nearest visible enemy inside a small cone, weaker while the right stick is pushed. Servers can refuse it with `sv_allowAssist 0`.
+
+| Cvar | Default | Notes |
+|---|---|---|
+| `cl_aimAssist` | `1` | 0 = off, 1 = on, 2 = only while zoomed |
+| `cl_aimAssistAngle` | `5` | cone half-angle in degrees, max 45 |
+| `cl_aimAssistStrength` | `0.80` | clamps to `[0, 1]` |
 
 ### Menus
 
