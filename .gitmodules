@@ -6,3 +6,11 @@
 	path = vulkan4xenon
 	url = https://github.com/xenosworks/vulkan4xenon.git
 	ignore = dirty
+[submodule "mbedtls-xenon"]
+	path = mbedtls-xenon
+	url = https://github.com/xenosworks/mbedtls-xenon.git
+	ignore = dirty
+[submodule "curl-xenon"]
+	path = curl-xenon
+	url = https://github.com/xenosworks/curl-xenon.git
+	ignore = dirty

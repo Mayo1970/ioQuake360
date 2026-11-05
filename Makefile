@@ -22,6 +22,12 @@ OGG_SOURCES := $(OGG_DIR)/src/bitwise.c $(OGG_DIR)/src/framing.c
 VORBIS_DIR := code/thirdparty/libvorbis-1.3.7
 # The PS3 port's file list.
 VORBIS_SOURCES := $(addprefix $(VORBIS_DIR)/lib/,mdct.c block.c window.c synthesis.c info.c floor0.c floor1.c res0.c mapping0.c registry.c codebook.c sharedbook.c smallft.c vorbisfile.c analysis.c bitrate.c envelope.c lpc.c lsp.c psy.c)
+CURL_BUILD := $(BUILD)/curl-xenon
+CURL_XENON_LIBRARIES := \
+	$(CURL_BUILD)/curl/lib/libcurl.a \
+	$(CURL_BUILD)/mbedtls/library/libmbedtls.a \
+	$(CURL_BUILD)/mbedtls/library/libmbedx509.a \
+	$(CURL_BUILD)/mbedtls/library/libmbedcrypto.a
 ENGINE_SOURCES := \
 	code/qcommon/cm_load.c \
 	code/qcommon/cm_patch.c \
@@ -56,6 +62,7 @@ ENGINE_SOURCES := \
 	$(wildcard code/botlib/*.c) \
 	code/client/cl_cgame.c \
 	code/client/cl_cin.c \
+	code/client/cl_http_curl.c \
 	code/client/cl_console.c \
 	code/client/cl_input.c \
 	code/client/cl_keys.c \
@@ -97,9 +104,9 @@ OBJECTS := $(patsubst %.c,$(BUILD)/obj/%.o,$(SOURCES))
 DEPS := $(OBJECTS:.o=.d)
 ARGS_STAMP := $(BUILD)/args.stamp
 
-DEFINES := -DBOTLIB -DNO_VM_COMPILED -DUSE_INTERNAL_ZLIB -DUSE_INTERNAL_JPEG -DNO_GZIP -DUSE_CODEC_VORBIS
+DEFINES := -DBOTLIB -DNO_VM_COMPILED -DUSE_INTERNAL_ZLIB -DUSE_INTERNAL_JPEG -DNO_GZIP -DUSE_CODEC_VORBIS -DUSE_HTTP -DUSE_CURL_STATIC
 CFLAGS := -mcpu=cell -fno-pic -fno-strict-aliasing -std=gnu17 -O2 -Wall -Wextra \
-	-I$(XSDK)/include -I$(ZLIB_DIR) -I$(JPEG_DIR) -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -Ivulkan4xenon/third_party/vulkan-headers/include \
+	-I$(XSDK)/include -I$(ZLIB_DIR) -I$(JPEG_DIR) -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -Icurl-xenon/include -Ivulkan4xenon/third_party/vulkan-headers/include \
 	-MMD -MP $(DEFINES) $(DEFINES_EXTRA) \
 	-DQ360_TITLE='"$(TITLE)"' -DQ360_ARGS='"$(ARGS)"'
 ifeq ($(DEBUG),1)
@@ -334,9 +341,9 @@ DEPS += $(NATIVE_MODULE_DEPS)
 LDFLAGS := -static -nostdlib -T $(XSDK)/src/xsdk.ld
 ifeq ($(RENDERER),vk)
 VULKAN4XENON_LIBRARY := vulkan4xenon/build/libvulkan4xenon.a
-LIBS := -Wl,--start-group $(VULKAN4XENON_LIBRARY) $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
+LIBS := -Wl,--start-group $(VULKAN4XENON_LIBRARY) $(CURL_XENON_LIBRARIES) $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
 else
-LIBS := -Wl,--start-group $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
+LIBS := -Wl,--start-group $(CURL_XENON_LIBRARIES) $(XSDK)/build/libxsdk.a -lstdc++ -lc -lm -lgcc -Wl,--end-group
 endif
 
 $(patsubst %.c,$(BUILD)/obj/%.o,$(ZLIB_SOURCES)): CFLAGS += -w
@@ -417,6 +424,13 @@ $(VULKAN4XENON_LIBRARY): FORCE xsdk-patches vulkan4xenon-patches
 	$(MAKE) -C vulkan4xenon XSDK=../$(XSDK) TOOLCHAIN=$(TOOLCHAIN) build/libvulkan4xenon.a
 endif
 
+curl-xenon: FORCE $(XSDK)/build/libxsdk.a
+	cmake -S curl-xenon/tests/xsdk -B $(CURL_BUILD) -GNinja -DCMAKE_TOOLCHAIN_FILE=$(abspath $(XSDK))/cmake/xsdk.cmake -DCMAKE_BUILD_TYPE=Release
+	cmake --build $(CURL_BUILD) --target libcurl_static mbedtls mbedx509 mbedcrypto
+
+$(CURL_XENON_LIBRARIES): curl-xenon
+	@test -f "$@"
+
 FORCE:
 
 $(ARGS_STAMP): FORCE
@@ -482,7 +496,7 @@ $(BUILD)/ui_native.o: $(UI_OBJECTS) code/sys/xenon_module.ld
 		-G __ui_data_start -G __ui_data_end -G __ui_bss_start -G __ui_bss_end \
 		$(BUILD)/ui_renamed.o $@
 
-$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.stamp $(XSDK)/build/libxsdk.a $(VULKAN4XENON_LIBRARY) $(XSDK)/src/xsdk.ld
+$(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.stamp $(XSDK)/build/libxsdk.a $(CURL_XENON_LIBRARIES) $(VULKAN4XENON_LIBRARY) $(XSDK)/src/xsdk.ld
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(LIBS)
 
@@ -494,4 +508,4 @@ $(BUILD)/$(TARGET).xex: $(BUILD)/$(TARGET).elf $(XSDK)/tools/elf2xex.py $(TITLE_
 -include $(DEPS)
 endif
 
-.PHONY: all ta oa all-flavors dist clean FORCE xsdk-patches vulkan4xenon-patches xost shaders
+.PHONY: all ta oa all-flavors dist clean FORCE xsdk-patches vulkan4xenon-patches curl-xenon xost shaders

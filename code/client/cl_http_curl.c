@@ -30,6 +30,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #include <curl/curl.h>
 #endif
 
+#ifndef USE_CURL_STATIC
 #ifdef __APPLE__
   #define DEFAULT_CURL_LIB "libcurl.dylib"
 #else
@@ -38,6 +39,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #include "../sys/sys_loadlib.h"
+#endif
 
 cvar_t *cl_cURLLib;
 
@@ -69,8 +71,10 @@ CURLMsg *(*qcurl_multi_info_read)(CURLM *multi_handle,
                                                 int *msgs_in_queue);
 const char *(*qcurl_multi_strerror)(CURLMcode);
 
+#ifndef USE_CURL_STATIC
 static void *cURLLib = NULL;
 static qboolean cURLSymbolLoadFailed = qfalse;
+#endif
 
 static CURL *downloadCURL = NULL;
 static CURLM *downloadCURLM = NULL;
@@ -80,6 +84,7 @@ static CURLM *downloadCURLM = NULL;
 GPA
 =================
 */
+#ifndef USE_CURL_STATIC
 static void *GPA(char *str)
 {
 	void *rv;
@@ -97,6 +102,7 @@ static void *GPA(char *str)
         return rv;
 	}
 }
+#endif
 
 /*
 =================
@@ -105,6 +111,30 @@ CL_HTTP_Init
 */
 qboolean CL_HTTP_Init(void)
 {
+#ifdef USE_CURL_STATIC
+	if(qcurl_easy_init)
+		return qtrue;
+
+	qcurl_version = curl_version;
+	qcurl_easy_init = curl_easy_init;
+	qcurl_easy_setopt = curl_easy_setopt;
+	qcurl_easy_perform = curl_easy_perform;
+	qcurl_easy_cleanup = curl_easy_cleanup;
+	qcurl_easy_getinfo = curl_easy_getinfo;
+	qcurl_easy_duphandle = curl_easy_duphandle;
+	qcurl_easy_reset = curl_easy_reset;
+	qcurl_easy_strerror = curl_easy_strerror;
+	qcurl_multi_init = curl_multi_init;
+	qcurl_multi_add_handle = curl_multi_add_handle;
+	qcurl_multi_remove_handle = curl_multi_remove_handle;
+	qcurl_multi_fdset = curl_multi_fdset;
+	qcurl_multi_perform = curl_multi_perform;
+	qcurl_multi_cleanup = curl_multi_cleanup;
+	qcurl_multi_info_read = curl_multi_info_read;
+	qcurl_multi_strerror = curl_multi_strerror;
+	Com_Printf("Loading static libcurl...OK\n");
+	return qtrue;
+#else
 	if(cURLLib)
 		return qtrue;
 
@@ -151,6 +181,7 @@ qboolean CL_HTTP_Init(void)
 	Com_Printf("OK\n");
 
 	return qtrue;
+#endif
 }
 
 /*
@@ -160,7 +191,11 @@ CL_HTTP_Available
 */
 qboolean CL_HTTP_Available(void)
 {
+#ifdef USE_CURL_STATIC
+	return qcurl_easy_init != NULL;
+#else
 	return cURLLib != NULL;
+#endif
 }
 
 static void CL_cURL_Cleanup(void)
@@ -198,11 +233,13 @@ void CL_HTTP_Shutdown( void )
 {
 	CL_cURL_Cleanup();
 
+#ifndef USE_CURL_STATIC
 	if(cURLLib)
 	{
 		Sys_UnloadLibrary(cURLLib);
 		cURLLib = NULL;
 	}
+#endif
 	qcurl_easy_init = NULL;
 	qcurl_easy_setopt = NULL;
 	qcurl_easy_perform = NULL;
