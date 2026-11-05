@@ -6876,6 +6876,22 @@ void vk_create_pipelines_without_swapchain( void )
 	ri.Printf( PRINT_ALL, "Vulkan: no swapchain, %u of %u pipelines created, %u post-process; quitting\n", created, vk.pipelines_count, post );
 	ri.Cmd_ExecuteText( EXEC_INSERT, "quit\n" );
 }
+
+// Mirror, fog and dlight pipelines are otherwise built at their first draw, which hitches the frame on the console.
+void vk_create_all_pipelines( void )
+{
+	const renderPass_t pass = vk.renderPassIndex;
+	const int start = ri.Milliseconds();
+	uint32_t i;
+
+	vk.renderPassIndex = RENDER_PASS_MAIN;
+	for ( i = 0; i < vk.pipelines_count; i++ ) {
+		vk_gen_pipeline( i );
+	}
+	vk.renderPassIndex = pass;
+
+	ri.Printf( PRINT_ALL, "Vulkan: %u pipelines built in %i ms\n", vk.pipelines_count, ri.Milliseconds() - start );
+}
 #endif
 
 
