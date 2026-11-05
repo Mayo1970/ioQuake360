@@ -471,7 +471,12 @@ void IN_Frame(void)
 		} else if (catchers & KEYCATCH_MESSAGE) {
 			XI_KeyboardOpen("Chat", 128, qtrue, qfalse, qfalse, qfalse);
 		} else if (in_menu && XI_UIFieldFocused()) {
+#ifdef STANDALONETA
+			/* TA reports focus only in edit mode, which Enter must end. */
+			XI_KeyboardOpen("Enter text", 80, qfalse, qfalse, qtrue, qtrue);
+#else
 			XI_KeyboardOpen("Enter text", 80, qfalse, qfalse, qtrue, qfalse);
+#endif
 		}
 		if (xi_osk_active)
 			swallow[PB_A] = 1;
