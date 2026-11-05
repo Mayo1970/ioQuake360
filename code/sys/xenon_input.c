@@ -375,7 +375,7 @@ void IN_Init(void *windowData)
 	Cvar_Set("j_yaw_axis", "4");
 	Cvar_Set("j_forward_axis", "1");
 	Cvar_Set("j_side_axis", "0");
-	/* Archived: the Controls slider copies it into j_pitch/j_yaw, which otherwise reset to 0 each launch. */
+	/* Archived so the stock Controls menu's joystick threshold slider keeps its value. */
 	Cvar_Get("joy_threshold", "0.011", CVAR_ARCHIVE);
 	Cvar_Set("j_forward", "-0.25");
 	Cvar_Set("j_side", "0.25");
