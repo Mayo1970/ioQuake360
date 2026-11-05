@@ -278,7 +278,7 @@ index ebc1345a9b68a5f3a124848420b290e59ac1f74a..f2d4f3c1c712b31f12d093973166e24f
  	if (result == VK_SUCCESS)
  		result = gather_resources(layout, pipeline->vertex_source, true, pipeline);
 diff --git a/src/queue.c b/src/queue.c
-index da5127d39442996f82f871b09595d3c962b7ccef..d1e871c9091b976a4fd5b03c14c632c3af4ae3f2 100644
+index da5127d39442996f82f871b09595d3c962b7ccef..6a14aa04a0a62fad263cc0dfc8a6bc7a253dfcb7 100644
 --- a/src/queue.c
 +++ b/src/queue.c
 @@ -47,6 +47,7 @@ typedef struct {
@@ -289,14 +289,16 @@ index da5127d39442996f82f871b09595d3c962b7ccef..d1e871c9091b976a4fd5b03c14c632c3
  	VkViewport viewport;
  	VkRect2D scissor;
  	XsdkBlendState blends[V4X_MAX_COLOR_ATTACHMENTS];
-@@ -131,6 +132,17 @@ static void write_literals(const V4xShader *shader, bool vertex)
+@@ -131,6 +132,19 @@ static void write_literals(const V4xShader *shader, bool vertex)
  	}
  }
  
 +static void write_specializations(const PipelineSpecialization *specializations, uint32_t count, bool vertex)
 +{
 +	for (uint32_t i = 0; i < count; i++) {
-+		const float values[4] = { specializations[i].value, 0.0f, 0.0f, 0.0f };
++		// xost reads a scalar's register whole, as a literal's splat, so every lane holds the value.
++		const float v = specializations[i].value;
++		const float values[4] = { v, v, v, v };
 +		if (vertex)
 +			xsdk_gpu_set_vertex_constants(specializations[i].reg, values, 1);
 +		else
@@ -307,7 +309,7 @@ index da5127d39442996f82f871b09595d3c962b7ccef..d1e871c9091b976a4fd5b03c14c632c3
  // The first pixel whose centre a viewport edge at coordinate covers, or the one past the last.
  static int32_t first_pixel(float coordinate)
  {
-@@ -208,6 +220,10 @@ static void apply_pipeline(const Pipeline *pipeline, Replay *replay)
+@@ -208,6 +222,10 @@ static void apply_pipeline(const Pipeline *pipeline, Replay *replay)
  		write_literals(pipeline->vertex_source, true);
  	if (changed(replay, &applied->pixel_literals, &pipeline->pixel_source, sizeof pipeline->pixel_source))
  		write_literals(pipeline->pixel_source, false);
