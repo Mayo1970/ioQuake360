@@ -408,6 +408,11 @@ void CL_JoystickMove( usercmd_t *cmd ) {
 		anglespeed = 0.001 * cls.frametime;
 	}
 
+#ifdef __XSDK__
+	// The Setup slider only sets sensitivity (default 5); 0.8 makes the stick 20% slower at the default.
+	anglespeed *= 0.8f * cl_sensitivity->value / 5.0f;
+#endif
+
 	if ( !in_strafe.active ) {
 		cl.viewangles[YAW] += anglespeed * yaw;
 		cmd->rightmove = ClampChar( cmd->rightmove + (int)right );
