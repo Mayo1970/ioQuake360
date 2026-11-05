@@ -361,11 +361,11 @@ clean:
 	@:
   else
 clean:
-	rm -rf build build_ta build_oa
+	rm -rf build build_ta build_oa dist
   endif
 else
 clean:
-	rm -rf build build_ta build_oa
+	rm -rf build build_ta build_oa dist
 
 all: $(BUILD)/$(TARGET).xex
 
@@ -373,6 +373,15 @@ all-flavors:
 	$(MAKE)
 	$(MAKE) TA=1
 	$(MAKE) OA=1
+
+# A release ships the Vulkan renderer, so every flavor builds with RENDERER=vk.
+dist:
+	$(MAKE) RENDERER=vk
+	$(MAKE) RENDERER=vk TA=1
+	$(MAKE) RENDERER=vk OA=1
+	rm -rf dist/ioQuake360
+	mkdir -p dist/ioQuake360
+	cp build/ioquake360.xex build_ta/ioquake360_ta.xex build_oa/ioquake360_oa.xex README.md INSTALLATION.md LICENSE THIRD_PARTY_NOTICES.md dist/ioQuake360/
 
 # The image has no git, so patch(1) applies the carried patches; a clean reverse dry run means already applied.
 define apply_patch
@@ -384,6 +393,7 @@ endef
 xsdk-patches:
 	$(call apply_patch,$(XSDK),patches/x360-sdk/0001-specialization-constants.patch)
 	$(call apply_patch,$(XSDK),patches/x360-sdk/0002-xam-show-keyboard-ui.patch)
+	$(call apply_patch,$(XSDK),patches/x360-sdk/0003-xex-title-resource.patch)
 
 vulkan4xenon-patches:
 	$(call apply_patch,vulkan4xenon,$(VULKAN4XENON_PATCH))
@@ -477,10 +487,12 @@ $(BUILD)/$(TARGET).elf: $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(BUILD)/renderer.st
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) -Wl,-Map,$(BUILD)/$(TARGET).map -o $@ $(OBJECTS) $(NATIVE_MODULE_OBJECTS) $(LIBS)
 
-$(BUILD)/$(TARGET).xex: $(BUILD)/$(TARGET).elf $(XSDK)/tools/elf2xex.py
-	$(PYTHON) $(XSDK)/tools/elf2xex.py $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).xex
+# The XDBF title resource needs elf2xex patch 0003, so xsdk-patches runs before the XEX is built.
+$(BUILD)/$(TARGET).xex: $(BUILD)/$(TARGET).elf $(XSDK)/tools/elf2xex.py $(TITLE_ICON) | xsdk-patches
+	$(PYTHON) $(XSDK)/tools/elf2xex.py $(BUILD)/$(TARGET).elf $(BUILD)/$(TARGET).xex \
+		--title-id $(TITLE_ID) --title-name "$(TITLE)" --title-icon $(TITLE_ICON)
 
 -include $(DEPS)
 endif
 
-.PHONY: all ta oa all-flavors clean FORCE xsdk-patches vulkan4xenon-patches xost shaders
+.PHONY: all ta oa all-flavors dist clean FORCE xsdk-patches vulkan4xenon-patches xost shaders

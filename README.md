@@ -10,11 +10,11 @@ Three builds are produced from the same source tree. Each is a `.xex` for an
 RGH/JTAG console, with native `cgame` and `qagame`. Open Arena also has a
 native `ui`; ioQuake3 and Team Arena run `vm/ui.qvm` from their paks.
 
-| Variant | XEX | Game dir | Native modules |
-|---|---|---|---|
-| ioQuake3   | `ioquake360.xex`    | `baseq3` | `qagame`, `cgame` |
-| Team Arena | `ioquake360_ta.xex` | `baseq3` + `missionpack` | `qagame`, `cgame` |
-| Open Arena | `ioquake360_oa.xex` | `baseoa` | `qagame`, `cgame`, `ui` |
+| Variant | XEX | Title ID | Game dir | Native modules |
+|---|---|---|---|---|
+| ioQuake3   | `ioquake360.xex`    | `51330360` | `baseq3` | `qagame`, `cgame` |
+| Team Arena | `ioquake360_ta.xex` | `51330361` | `baseq3` + `missionpack` | `qagame`, `cgame` |
+| Open Arena | `ioquake360_oa.xex` | `51330362` | `baseoa` | `qagame`, `cgame`, `ui` |
 
 ## Status
 
@@ -110,7 +110,7 @@ Other targets (all variants):
 
 ```bash
 make          # .xex for the selected variant
-make dist     # dist/ioQuake360/ with every .xex, docs and notices
+make dist     # dist/ioQuake360/ with every .xex (RENDERER=vk), docs and notices
 make shaders  # regenerate the Xenos shader bundle
 make clean    # wipe all build dirs (build/, build_ta/, build_oa/)
 ```
@@ -124,11 +124,11 @@ make clean    # wipe all build dirs (build/, build_ta/, build_oa/)
 
 ### Outputs
 
-| Variant | Path |
-|---|---|
-| ioQuake3   | `build/ioquake360.xex` |
-| Team Arena | `build_ta/ioquake360_ta.xex` |
-| Open Arena | `build_oa/ioquake360_oa.xex` |
+| Variant | Path | Title ID |
+|---|---|---|
+| ioQuake3   | `build/ioquake360.xex` | `51330360` |
+| Team Arena | `build_ta/ioquake360_ta.xex` | `51330361` |
+| Open Arena | `build_oa/ioquake360_oa.xex` | `51330362` |
 
 Run `make clean` after changing compiler flags. Switching `RENDERER` relinks
 with the selected renderer while reusing the shared engine objects.
