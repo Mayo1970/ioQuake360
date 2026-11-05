@@ -56,6 +56,7 @@ static cvar_t *x360_rumbleEnable = NULL;
 static cvar_t *x360_rumbleScale  = NULL;
 static int     s_rumbleExpiryMs = 0;
 static int     s_rumbleActive   = 0;
+static int     xi_aim_last_mode = 1;
 
 static XAM_OVERLAPPED xi_osk_ov;
 /* Kept apart from the overlapped, which XAM writes until the call is done. */
@@ -538,6 +539,27 @@ void IN_Frame(void)
 			XI_RumbleStop();
 		/* Release whichever stick button was pressed first and already sent its key. */
 		for (b = PB_LS; b <= PB_RS; b++) {
+			if (xi_btn_sent[b])
+				Com_QueueEvent(0, SE_KEY, xi_btn_sent[b], qfalse, 0, NULL);
+			xi_btn_sent[b] = 0;
+			swallow[b] = 1;
+		}
+	}
+
+	/* LB+RB toggles aim assist as PS3 L1+R1 does, restoring the last non-zero mode. */
+	if (cur[PB_LB] && cur[PB_RB] && (!xi_btn_prev[PB_LB] || !xi_btn_prev[PB_RB])) {
+		int mode = (int)Cvar_VariableValue("cl_aimAssist");
+
+		if (mode > 0) {
+			xi_aim_last_mode = mode;
+			Cvar_Set("cl_aimAssist", "0");
+			Com_Printf("DISABLED AIM ASSIST\n");
+		} else {
+			Cvar_Set("cl_aimAssist", va("%d", xi_aim_last_mode));
+			Com_Printf("ENABLED AIM ASSIST\n");
+		}
+		XI_SetRumble(200, 1, 150);
+		for (b = PB_LB; b <= PB_RB; b++) {
 			if (xi_btn_sent[b])
 				Com_QueueEvent(0, SE_KEY, xi_btn_sent[b], qfalse, 0, NULL);
 			xi_btn_sent[b] = 0;
