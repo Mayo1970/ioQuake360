@@ -206,7 +206,7 @@ LS, RS and BACK; configs store them as `PAD_A` ... `PAD_BACK`.
 | **Back + A** | Open chat |
 | **Back + Y** | Toggle console |
 | **A** (console or chat open) | Open the system keyboard |
-| **Back + Start** | Quit to dashboard (coming later) |
+| **Back + Start** | Quit to dashboard |
 | **LS + RS** | Toggle rumble on/off (coming later) |
 
 ### Rumble

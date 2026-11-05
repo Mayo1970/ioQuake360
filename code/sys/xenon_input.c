@@ -3,6 +3,7 @@
 #include "../qcommon/q_shared.h"
 #include "../qcommon/qcommon.h"
 #include "../client/keycodes.h"
+#include "../client/client.h"
 #include "xsdk/kernel.h"
 
 extern int Key_GetCatcher(void);
@@ -19,6 +20,8 @@ extern char *Key_GetBinding(int keynum);
 #define XI_OSK_TITLE_MAX      64
 #define XI_UI_FOCUS_MS        100
 #define XI_TA_ENTER_MS        300
+#define XI_XN_SYS_UI          9
+#define XI_NOTIFY_MAX_VERSION 10
 
 enum {
 	PB_A, PB_B, PB_X, PB_Y,
@@ -45,6 +48,7 @@ static int xi_axis_prev[5];
 static float xi_cursor_accum_x;
 static float xi_cursor_accum_y;
 static int xi_prev_in_menu;
+static HANDLE xi_notify_listener;
 
 static cvar_t *x360_rumbleEnable = NULL;
 static cvar_t *x360_rumbleScale  = NULL;
@@ -372,6 +376,10 @@ void IN_Init(void *windowData)
 	x360_rumbleEnable = Cvar_Get("x360_rumbleEnable", "1", CVAR_ARCHIVE);
 	x360_rumbleScale  = Cvar_Get("x360_rumbleScale", "1.0", CVAR_ARCHIVE);
 
+	xi_notify_listener = XamNotifyCreateListener(UINT64_MAX, XI_NOTIFY_MAX_VERSION);
+	if (!xi_notify_listener)
+		Com_Printf("XamNotifyCreateListener failed\n");
+
 	Com_Printf("IN_Init: XInput pad input ready\n");
 }
 
@@ -385,6 +393,21 @@ void IN_Frame(void)
 	const INPUT_GAMEPAD *pad;
 	int lx, ly, rx, ry;
 	float fx, fy;
+	uint32_t notify_id, notify_param;
+
+	/* Polled before the pad: XAM keeps the pad from the title while the Guide shows. */
+	while (xi_notify_listener && XNotifyGetNext(xi_notify_listener, 0, &notify_id, &notify_param)) {
+		if (notify_id != XI_XN_SYS_UI)
+			continue;
+		Com_Printf("Guide %s\n", notify_param ? "opened" : "closed");
+		if (notify_param) {
+			XI_RumbleStop();
+			XI_ReleaseHeld();
+			/* Escape outside an active game disconnects, so only an active game gets the menu. */
+			if (Key_GetCatcher() == 0 && clc.state == CA_ACTIVE && !clc.demoplaying)
+				XI_TapKey(K_ESCAPE);
+		}
+	}
 
 	for (i = 0; i < XI_PORT_COUNT; i++) {
 		ok[i] = XamInputGetState(i, 0, &states[i]) == ERROR_SUCCESS;
@@ -447,6 +470,16 @@ void IN_Frame(void)
 	if (cur[PB_A] && !xi_btn_prev[PB_A] && cur[PB_BACK] && !in_menu && !in_text) {
 		Cbuf_ExecuteText(EXEC_APPEND, "messagemode\n");
 		swallow[PB_A] = 1;
+	}
+	/* BACK+START quits, as PS3 Select+Start does; swallowed so Escape and +scores stay quiet. */
+	if (cur[PB_BACK] && cur[PB_START] && (!xi_btn_prev[PB_BACK] || !xi_btn_prev[PB_START])) {
+		Cbuf_ExecuteText(EXEC_APPEND, "quit\n");
+		for (b = PB_BACK; b <= PB_START; b++) {
+			if (xi_btn_sent[b])
+				Com_QueueEvent(0, SE_KEY, xi_btn_sent[b], qfalse, 0, NULL);
+			xi_btn_sent[b] = 0;
+			swallow[b] = 1;
+		}
 	}
 	if (cur[PB_B] && !xi_btn_prev[PB_B] && (catchers & KEYCATCH_CONSOLE)) {
 		XI_ToggleConsole();
@@ -568,6 +601,10 @@ void IN_Shutdown(void)
 	XI_RumbleStop();
 	XI_ReleaseHeld();
 	XI_ResetState();
+	if (xi_notify_listener) {
+		NtClose(xi_notify_listener);
+		xi_notify_listener = 0;
+	}
 }
 
 void IN_Restart(void)
