@@ -2610,6 +2610,14 @@ static void vk_release_geometry_buffers( void )
 #endif
 
 	for ( i = 0; i < NUM_COMMAND_BUFFERS; i++ ) {
+#ifdef __XSDK__
+		if ( vk.tess[i].dyn_copy_vertex_buffer )
+			qvkDestroyBuffer( vk.device, vk.tess[i].dyn_copy_vertex_buffer, NULL );
+		vk.tess[i].dyn_copy_vertex_buffer = VK_NULL_HANDLE;
+		if ( vk.tess[i].dyn_copy_vertex_memory )
+			qvkFreeMemory( vk.device, vk.tess[i].dyn_copy_vertex_memory, NULL );
+		vk.tess[i].dyn_copy_vertex_memory = VK_NULL_HANDLE;
+#endif
 		qvkDestroyBuffer( vk.device, vk.tess[i].vertex_buffer, NULL );
 		vk.tess[i].vertex_buffer = VK_NULL_HANDLE;
 	}
@@ -2642,9 +2650,31 @@ static void vk_create_geometry_buffers( VkDeviceSize size )
 	for ( i = 0 ; i < NUM_COMMAND_BUFFERS; i++ ) {
 		desc.size = size;
 		desc.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+#ifdef __XSDK__
+		if ( x360_dynViaCopy && x360_dynViaCopy->integer )
+			desc.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+#endif
 		VK_CHECK( qvkCreateBuffer( vk.device, &desc, NULL, &vk.tess[i].vertex_buffer ) );
 
 		qvkGetBufferMemoryRequirements( vk.device, vk.tess[i].vertex_buffer, &vb_memory_requirements );
+
+#ifdef __XSDK__
+		if ( x360_dynViaCopy && x360_dynViaCopy->integer ) {
+			VkBufferCreateInfo copy_desc = desc;
+			VkMemoryRequirements copy_requirements;
+			VkMemoryAllocateInfo copy_alloc_info;
+
+			copy_desc.usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+			VK_CHECK( qvkCreateBuffer( vk.device, &copy_desc, NULL, &vk.tess[i].dyn_copy_vertex_buffer ) );
+			qvkGetBufferMemoryRequirements( vk.device, vk.tess[i].dyn_copy_vertex_buffer, &copy_requirements );
+			Com_Memset( &copy_alloc_info, 0, sizeof( copy_alloc_info ) );
+			copy_alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+			copy_alloc_info.allocationSize = copy_requirements.size;
+			copy_alloc_info.memoryTypeIndex = find_memory_type( copy_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT );
+			VK_CHECK( qvkAllocateMemory( vk.device, &copy_alloc_info, NULL, &vk.tess[i].dyn_copy_vertex_memory ) );
+			VK_CHECK( qvkBindBufferMemory( vk.device, vk.tess[i].dyn_copy_vertex_buffer, vk.tess[i].dyn_copy_vertex_memory, 0 ) );
+		}
+#endif
 	}
 
 	memory_type_bits = vb_memory_requirements.memoryTypeBits;
@@ -7209,6 +7239,28 @@ static void vk_bind_index_attr( int index )
 
 static void vk_bind_attr( int index, unsigned int item_size, const void *src ) {
 #ifdef __XSDK__
+	if ( x360_dynViaCopy && x360_dynViaCopy->integer ) {
+		VkBufferCopy copy_region;
+		const uint32_t offset = PAD( vk.cmd->vertex_buffer_offset, 32 );
+		const uint32_t size = tess.numVertexes * item_size;
+
+		if ( offset + size > vk.geometry_buffer_size ) {
+			vk.geometry_buffer_size_new = log2pad( offset + size, 1 );
+			vk_bind_index_attr( index );
+			return;
+		}
+		vk.cmd->buf_offset[index] = offset;
+		Com_Memcpy( vk.cmd->vertex_buffer_ptr + offset, src, size );
+		vk.cmd->vertex_buffer_offset = (VkDeviceSize)offset + size;
+		copy_region.srcOffset = offset;
+		copy_region.dstOffset = offset;
+		copy_region.size = size;
+		// Let the backend invalidate this destination after copying and before the draw reads it.
+		qvkCmdCopyBuffer( vk.cmd->command_buffer, vk.cmd->vertex_buffer, vk.cmd->dyn_copy_vertex_buffer, 1, &copy_region );
+		shade_bufs[index] = vk.cmd->dyn_copy_vertex_buffer;
+		vk_bind_index_attr( index );
+		return;
+	}
 	if ( vk_dyn_separate_enabled && !vk.cmd->dyn_separate_fallback ) {
 		VkBuffer buffer;
 		byte *mapped;

@@ -338,6 +338,8 @@ typedef struct vk_tess_s {
 	byte *vertex_buffer_ptr; // pointer to mapped vertex buffer
 	uint32_t vertex_buffer_offset; // VkDeviceSize
 #ifdef __XSDK__
+	VkBuffer dyn_copy_vertex_buffer;
+	VkDeviceMemory dyn_copy_vertex_memory;
 	VkDeviceSize dyn_separate_memory_base;
 	VkDeviceSize dyn_separate_memory_used;
 	VkDeviceSize dyn_separate_pool_limit;
