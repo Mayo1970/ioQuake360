@@ -338,6 +338,13 @@ void XI_SetRumble(int large, int small, int durationMs)
 	s_rumbleActive = 1;
 }
 
+static void XI_OpenNotifyListener(void)
+{
+	xi_notify_listener = XamNotifyCreateListener(UINT64_MAX, XI_NOTIFY_MAX_VERSION);
+	if (!xi_notify_listener)
+		Com_Printf("XamNotifyCreateListener failed\n");
+}
+
 void IN_Init(void *windowData)
 {
 	char *ctrl;
@@ -376,9 +383,7 @@ void IN_Init(void *windowData)
 	x360_rumbleEnable = Cvar_Get("x360_rumbleEnable", "1", CVAR_ARCHIVE);
 	x360_rumbleScale  = Cvar_Get("x360_rumbleScale", "1.0", CVAR_ARCHIVE);
 
-	xi_notify_listener = XamNotifyCreateListener(UINT64_MAX, XI_NOTIFY_MAX_VERSION);
-	if (!xi_notify_listener)
-		Com_Printf("XamNotifyCreateListener failed\n");
+	XI_OpenNotifyListener();
 
 	Com_Printf("IN_Init: XInput pad input ready\n");
 }
@@ -610,4 +615,5 @@ void IN_Shutdown(void)
 void IN_Restart(void)
 {
 	IN_Shutdown();
+	XI_OpenNotifyListener();
 }
