@@ -141,6 +141,7 @@ cvar_t	*r_colorMipLevels;
 cvar_t *x360_texDebug;
 cvar_t *x360_waitIdle;
 cvar_t *x360_dynSeparate;
+cvar_t *x360_dynViaCopy;
 #endif
 cvar_t	*r_picmip;
 cvar_t	*r_nomip;
@@ -1550,6 +1551,8 @@ static void R_Register( void )
 	ri.Cvar_SetDescription( x360_waitIdle, "Wait for the GPU to finish each submitted frame before continuing (live toggle; no vid_restart needed)." );
 	x360_dynSeparate = ri.Cvar_Get( "x360_dynSeparate", "0", CVAR_LATCH );
 	ri.Cvar_SetDescription( x360_dynSeparate, "Bind dynamic geometry streams and indices from separate zero-offset buffers (latched; requires vid_restart)." );
+	x360_dynViaCopy = ri.Cvar_Get( "x360_dynViaCopy", "0", CVAR_LATCH );
+	ri.Cvar_SetDescription( x360_dynViaCopy, "Copy dynamic vertex streams into a device-local buffer before drawing (latched; requires vid_restart)." );
 #endif
 	r_detailTextures = ri.Cvar_Get( "r_detailtextures", "1", CVAR_ARCHIVE_ND | CVAR_LATCH );
 	ri.Cvar_SetDescription( r_detailTextures, "Enables usage of shader stages flagged as detail." );

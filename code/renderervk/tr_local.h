@@ -1368,6 +1368,7 @@ extern	cvar_t	*r_colorMipLevels;				// development aid to see texture mip usage
 extern cvar_t *x360_texDebug;
 extern cvar_t *x360_waitIdle;
 extern cvar_t *x360_dynSeparate;
+extern cvar_t *x360_dynViaCopy;
 #endif
 extern	cvar_t	*r_picmip;						// controls picmip values
 extern	cvar_t	*r_nomip;						// apply picmip only on worldspawn textures
