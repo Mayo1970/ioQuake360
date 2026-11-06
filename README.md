@@ -18,31 +18,28 @@ native `ui`; Quake III Arena and Team Arena run `vm/ui.qvm` from their paks.
 
 ## Status
 
-**Pre-alpha. Not playable yet.** Nothing has run on hardware so far. The first
-hardware test is when Quake III Arena boots into gameplay.
+**Complete.** The port runs on RGH/JTAG hardware with the Vulkan renderer,
+and matches the PS3 port's feature set.
 
-Checked in [Xenia](https://github.com/xenia-canary/xenia-canary) so far:
-
-- The engine, the native game modules and the ui run all three variants
-  headless (null renderer): maps load and bots play to the time limit.
-- With `RENDERER=vk`, the Vulkan renderer creates its device, loads the
-  offline Xenos shader pack and creates every pipeline. Xenia has no display
-  controller, so the swapchain fails there; the build logs the pipeline count
-  and quits.
-
-Built but not yet checked on hardware: controller input, rumble, audio, OGG
-music with per-map playlists, IPv4 networking, the system keyboard for text
-input, Back + Start to quit, the Guide, and the release layout (`make dist`).
-
-Planned for the first release, to match the PS3 port:
-
-- Boots, loads maps, gameplay with bots, online multiplayer
+- Boots from Aurora with its own title name, title ID and icon per variant
+- Quake3e's Vulkan renderer on vulkan4xenon, 1280x720 through the console's
+  scaler, offline Xenos shader pack, every pipeline built at map load
 - Native game modules for Q3A, Team Arena and Open Arena
-- Networking: LAN discovery, internet server browser, master server, hosting
-- Xbox 360 controller dual-stick input + **rumble**
+- Gameplay with bots, every weapon precached at map load
+- Networking: LAN discovery, internet server browser, master server, hosting,
+  pure servers, HTTP map downloads ([curl-xenon](https://github.com/xenosworks/curl-xenon))
+- Xbox 360 controller dual-stick input, **rumble**, aim assist, quick 180° turn
+- The system keyboard for console, chat and menu fields
+- Signed-in gamertag as the default player name
+- XAudio sound, OGG Vorbis music with per-map playlists
 - **Mod support** via `+set fs_game <mod>` (also how TA loads `missionpack`)
-- OGG Vorbis music with per-map playlists
-- 1280x720 output through the console's scaler
+- The Guide, Back + Start to quit to the dashboard
+
+Known limits:
+
+- **1080i output is not supported.** The SDK's scaler refuses interlaced
+  modes. Set the console to 720p or 1080p.
+- No Kinect, no mouse, no USB keyboard or chatpad, no MSAA.
 
 ## Prerequisites (Windows)
 
@@ -73,9 +70,6 @@ See [INSTALLATION.md](INSTALLATION.md).
 ---
 
 ## Building
-
-> The build system lands in the first sprint. The commands below are its
-> target interface.
 
 ### Build the toolchain image (once)
 
@@ -209,7 +203,7 @@ LS, RS and BACK; configs store them as `PAD_A` ... `PAD_BACK`.
 | **Back + Y** | Toggle console |
 | **A** (console or chat open) | Open the system keyboard |
 | **Back + Start** | Quit to dashboard |
-| **LS + RS** | Toggle rumble on/off (coming later) |
+| **LS + RS** | Toggle rumble on/off |
 | **LB + RB** | Toggle aim assist on/off (default on) |
 
 ### Rumble
@@ -296,7 +290,93 @@ music track2.ogg       # or "music <path>" syntax
 
 ## AI disclosure
 
-Parts of this port were developed with the assistance of **Claude** (Anthropic) and **Codex** (OpenAI). AI was used for code generation, debugging, porting guidance, and documentation. All AI-generated code is reviewed and tested on hardware before release.
+This port is an experiment. The goal was to test how well **Claude Haiku**
+(Anthropic), a small and fast model, can write the code for a full console
+port in a homebrew environment: a big-endian PowerPC target, an open SDK with no
+Microsoft tooling, and a Vulkan layer over a GPU with no runtime shader
+compiler.
+
+The repo went from its first commit to a working port in three days
+(2026-11-04 to 2026-11-06), in about 100 commits.
+
+### Who did what
+
+- **Planning and supervision: a higher capacity model.** The supervisor wrote the
+  project plan. It cut the port into 10 phases (P0–P9) with milestone gates
+  (M0–M8), and into 50 tasks (`Q360-1` … `Q360-50`). Each task has story
+  points, a priority and acceptance criteria. The supervisor wrote a brief
+  for each task, reviewed and built the result, merged it, and kept the plan
+  up to date: results, commit hashes, decisions and new cards found during
+  testing.
+- **Coding: Claude Haiku.** A Haiku coding agent did the work for each task
+  on a task branch, from the supervisor's brief.
+- **Codex** (OpenAI) did a small part of the coding: the first draft of the
+  shader specialization-constant patch (Q360-16), the diagnosis rounds after
+  the first hardware test (Q360-29), and the patch rebase for the SDK move
+  (Q360-45). Its sandbox could not run Docker or git, so the supervisor
+  built, fixed and committed its output.
+- **Human.** Before milestone M6 the human wrote no code and ran no tests. The
+  only input was a choice when the supervisor asked one, for example which
+  route to take for text input. Hands-on human work started at M6 (Hardware
+  Gate 1): running each build on an RGH console, reporting what the screen
+  and speakers did, collecting logs and captures, picking fixes, and the
+  final polish.
+
+### Kanban workflow
+
+The work ran on a Kanban board (`plan/board.html`, a single HTML file) next
+to the written plan (`plan/PROJECT_PLAN.md`). Both hold the same cards and
+stay local (gitignored).
+
+- **Columns:** Backlog → To Do → In Progress → In Review → Done, plus
+  **Blocked**. A card carries its ID, phase, sprint, points, priority,
+  acceptance criteria and an activity log.
+- **WIP limit of one.** One card per session. When a card reaches Done, the
+  supervisor reports and stops. A new session pulls the next card. This keeps
+  each session's context small, which matters for a small model.
+- **Gates.** Cards flow inside a phased roadmap. A phase's milestone must
+  pass before the next phase's cards move to To Do. No hardware test was
+  allowed before M6 (Q3A boots into gameplay); until then a card was verified
+  by a clean build and a smoke run in Xenia.
+- **Blocked cards** hold the reason and what would unblock them, for example
+  1080i output (no source for the scaler values) and Kinect (no NUI support
+  in the SDK).
+- **Cross-cutting cards** run across all phases: review of every delegated
+  task, licence notices, docs in sync, and submodule pinning.
+- **New cards from testing.** Hardware runs added cards as they found
+  problems, for example the SDK move (Q360-45), aim assist (Q360-48) and the
+  first-use hitches (Q360-50).
+
+### The task loop
+
+1. The supervisor writes a brief: scope, files, acceptance criteria and the
+   project rules (vendor before editing, `__XSDK__` guards, comment rules,
+   keep upstream comments).
+2. The coding agent works on `task/Q360-<n>-<slug>` and commits as
+   `q360-dev`. The git history shows these commits.
+3. The supervisor checks the agent for drift from the brief, reviews the
+   diff, builds all three variants with both renderers in the Docker
+   toolchain, and corrects the code to the project rules.
+4. The supervisor runs the Xenia smoke where it applies, merges the branch
+   into `main` (`Merge Q360-<n>: ...`), moves the card to Done and logs the
+   result.
+
+### How the work was verified
+
+1. **Build gate:** Docker toolchain, three variants, null and Vulkan renderer.
+2. **Emulator gate:** Xenia Canary, headless. Maps load and bots play to the
+   time limit in all three variants. With the Vulkan renderer, every
+   pipeline is created (Xenia has no display controller, so the swapchain
+   step fails there by design).
+3. **Hardware gate:** from M6 on, the builds ran on a real console. Each run
+   went back to the supervisor as a log and captures. Example: one run showed
+   a cyan frame. The supervisor traced it to the layer writing specialization
+   constants to the `x` lane only, while the shader compiler reads a scalar
+   register as a splat. The fix filled all four lanes, and the next run
+   confirmed it.
+
+[AGENTS.md](AGENTS.md) holds the rules the agents followed. All code was
+reviewed and tested on hardware before release.
 
 ---
 
